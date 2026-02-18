@@ -1,0 +1,107 @@
+basePath: /api/v1
+definitions:
+  handlers.DatabaseStatusResponse:
+    properties:
+      database:
+        properties:
+          connected:
+            example: true
+            type: boolean
+          type:
+            example: sqlite
+            type: string
+        type: object
+      status:
+        example: ok
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+  handlers.StatsResponse:
+    properties:
+      stats:
+        additionalProperties: true
+        type: object
+      status:
+        example: ok
+        type: string
+    type: object
+host: localhost:8082
+info:
+  contact:
+    email: carlosand_01@hotmail.com
+    name: API Support
+  description: API de monitoreo para el Listener Service. Procesa eventos de Kafka
+    y actualiza la base de datos SQLite.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Listener Service API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Verifica el estado del servicio. Retorna el estado del servicio
+        y su nombre.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Servicio operativo
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
+  /monitoring/database/status:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene el estado de la base de datos SQLite
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Estado de la base de datos
+          schema:
+            $ref: '#/definitions/handlers.DatabaseStatusResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get database status
+      tags:
+      - monitoring
+  /monitoring/stats:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene estadísticas del servicio incluyendo conteo de items, tiendas
+        y reservas
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Estadísticas del servicio
+          schema:
+            $ref: '#/definitions/handlers.StatsResponse'
+        "500":
+          description: Error interno del servidor
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get service statistics
+      tags:
+      - monitoring
+schemes:
+- http
+- https
+swagger: "2.0"

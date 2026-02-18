@@ -1,0 +1,396 @@
+basePath: /api/v1
+definitions:
+  auth.LoginRequest:
+    properties:
+      password:
+        example: admin123
+        type: string
+      username:
+        example: admin
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  auth.LoginResponse:
+    properties:
+      expires_at:
+        example: "2024-01-15T12:00:00Z"
+        type: string
+      expires_in:
+        description: 10 minutes in seconds
+        example: 600
+        type: integer
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      type:
+        example: Bearer
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    description: Error response with error message
+    properties:
+      error:
+        description: |-
+          Error message describing what went wrong
+          @Example "item not found"
+          @Example "invalid page number"
+        example: item not found
+        type: string
+    type: object
+  handlers.InventoryItemResponse:
+    description: Response with inventory item details
+    properties:
+      available:
+        description: Available stock (total - reserved)
+        example: 80
+        type: integer
+      created_at:
+        description: Creation timestamp (ISO 8601 format)
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      description:
+        description: Product description
+        example: High-performance laptop with 16GB RAM and 512GB SSD
+        type: string
+      id:
+        description: Unique item identifier (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        description: Product name
+        example: Laptop Dell XPS 15
+        type: string
+      quantity:
+        description: Total stock quantity
+        example: 100
+        type: integer
+      reserved:
+        description: Reserved stock quantity
+        example: 20
+        type: integer
+      sku:
+        description: SKU (Stock Keeping Unit)
+        example: SKU-001
+        type: string
+      updated_at:
+        description: Last update timestamp (ISO 8601 format)
+        example: "2024-01-15T11:45:00Z"
+        type: string
+    type: object
+  handlers.ListItemsResponse:
+    description: Response with paginated list of inventory items
+    properties:
+      items:
+        description: List of inventory items
+        items:
+          $ref: '#/definitions/handlers.InventoryItemResponse'
+        type: array
+      page:
+        description: Current page number
+        example: 1
+        type: integer
+      page_size:
+        description: Number of items per page
+        example: 10
+        type: integer
+      total:
+        description: Total number of items
+        example: 100
+        type: integer
+      total_pages:
+        description: Total number of pages
+        example: 10
+        type: integer
+    type: object
+  handlers.StockStatusResponse:
+    description: Response with stock status information
+    properties:
+      available:
+        description: Available stock (total - reserved)
+        example: 80
+        type: integer
+      id:
+        description: Unique item identifier (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      quantity:
+        description: Total stock quantity
+        example: 100
+        type: integer
+      reserved:
+        description: Reserved stock quantity
+        example: 20
+        type: integer
+      sku:
+        description: SKU (Stock Keeping Unit)
+        example: SKU-001
+        type: string
+      updated_at:
+        description: Last update timestamp (ISO 8601 format)
+        example: "2024-01-15T12:00:00Z"
+        type: string
+    type: object
+host: localhost:8081
+info:
+  contact:
+    email: carlosand_01@hotmail.com
+    name: API Support
+  description: API de lectura para el sistema de inventario basado en arquitectura
+    CQRS + EDA. Optimizado para baja latencia y alta escalabilidad.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Query Service API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 'Autentica un usuario y retorna un token JWT válido por 10 minutos.
+        Usuarios disponibles: admin/admin123, user/user123, operator/operator123'
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token generado exitosamente
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Request inválido - credenciales faltantes
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Credenciales inválidas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login and get JWT token
+      tags:
+      - auth
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Verifica el estado del servicio. Retorna el estado del servicio
+        y su nombre.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Servicio operativo
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
+  /inventory/items:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene una lista paginada de items de inventario. Los resultados
+        están optimizados para lectura rápida desde cache.
+      parameters:
+      - description: 'Page number (default: 1, min: 1)'
+        example: 1
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 10, min: 1, max: 100)'
+        example: 10
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de items obtenida exitosamente
+          schema:
+            $ref: '#/definitions/handlers.ListItemsResponse'
+        "400":
+          description: Request inválido - parámetros de paginación inválidos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de lectura o conexión a
+            base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al cache
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List inventory items
+      tags:
+      - inventory
+  /inventory/items/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene un item de inventario por su ID. Optimizado para lectura
+        rápida desde cache.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item obtenido exitosamente
+          schema:
+            $ref: '#/definitions/handlers.InventoryItemResponse'
+        "400":
+          description: ID inválido - UUID malformado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de lectura o conexión a
+            base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al cache
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get inventory item by ID
+      tags:
+      - inventory
+  /inventory/items/{id}/stock:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene el estado de stock de un item (cantidad total, reservada
+        y disponible). Optimizado para lectura rápida desde cache.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Estado de stock obtenido exitosamente
+          schema:
+            $ref: '#/definitions/handlers.StockStatusResponse'
+        "400":
+          description: ID inválido - UUID malformado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de lectura o conexión a
+            base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al cache
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get stock status
+      tags:
+      - inventory
+  /inventory/items/sku/{sku}:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene un item de inventario por su SKU. Optimizado para lectura
+        rápida desde cache.
+      parameters:
+      - description: SKU (Stock Keeping Unit)
+        example: SKU-001
+        in: path
+        name: sku
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item obtenido exitosamente
+          schema:
+            $ref: '#/definitions/handlers.InventoryItemResponse'
+        "400":
+          description: SKU inválido - SKU vacío
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de lectura o conexión a
+            base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al cache
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get inventory item by SKU
+      tags:
+      - inventory
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: 'Type "Bearer" followed by a space and JWT token. Example: "Bearer
+      eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

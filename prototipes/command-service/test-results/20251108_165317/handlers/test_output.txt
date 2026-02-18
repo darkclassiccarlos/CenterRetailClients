@@ -1,0 +1,31 @@
+=== RUN   TestCreateItem_Success
+--- PASS: TestCreateItem_Success (0.00s)
+=== RUN   TestCreateItem_InvalidRequest_MissingFields
+--- PASS: TestCreateItem_InvalidRequest_MissingFields (0.00s)
+=== RUN   TestCreateItem_InvalidRequest_NegativeQuantity
+--- PASS: TestCreateItem_InvalidRequest_NegativeQuantity (0.00s)
+=== RUN   TestCreateItem_RepositoryError
+--- PASS: TestCreateItem_RepositoryError (0.00s)
+=== RUN   TestUpdateItem_Success
+--- PASS: TestUpdateItem_Success (0.00s)
+=== RUN   TestUpdateItem_NotFound
+--- PASS: TestUpdateItem_NotFound (0.00s)
+=== RUN   TestAdjustStock_Success
+--- PASS: TestAdjustStock_Success (0.00s)
+=== RUN   TestAdjustStock_InsufficientStock
+--- PASS: TestAdjustStock_InsufficientStock (0.00s)
+=== RUN   TestReserveStock_Success
+--- PASS: TestReserveStock_Success (0.00s)
+=== RUN   TestReserveStock_InsufficientStock
+--- PASS: TestReserveStock_InsufficientStock (0.00s)
+=== RUN   TestReleaseStock_Success
+--- PASS: TestReleaseStock_Success (0.00s)
+=== RUN   TestReleaseStock_InvalidQuantity
+--- PASS: TestReleaseStock_InvalidQuantity (0.00s)
+=== RUN   TestDeleteItem_Success
+--- PASS: TestDeleteItem_Success (0.00s)
+=== RUN   TestDeleteItem_NotFound
+--- PASS: TestDeleteItem_NotFound (0.00s)
+PASS
+	command-service/internal/handlers	coverage: 53.7% of statements
+ok  	command-service/internal/handlers	0.243s	coverage: 53.7% of statements

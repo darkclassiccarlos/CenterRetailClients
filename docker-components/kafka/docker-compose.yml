@@ -1,0 +1,90 @@
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - kafka-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # CORRECCIÓN: Cada listener debe tener un nombre único
+      # PLAINTEXT://localhost:9092 - para conexiones externas en puerto 9092
+      # PLAINTEXT_HOST://localhost:9093 - para conexiones externas en puerto 9093 (desde el host)
+      # PLAINTEXT_INTERNAL://kafka:29093 - para comunicación interna entre brokers
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://localhost:9093,PLAINTEXT_INTERNAL://kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093,PLAINTEXT_INTERNAL://0.0.0.0:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 3
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - kafka-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 🔹 Inicialización automática de topics
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: >
+      bash -c "
+      echo '🧩 Esperando Kafka...' && sleep 10 &&
+      echo '🚀 Creando topics iniciales...' &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29093 --topic inventory.items --partitions 3 --replication-factor 1 &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29093 --topic inventory.stock --partitions 3 --replication-factor 1 &&
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29093 --topic inventory.dlq --partitions 1 --replication-factor 1 &&
+      echo '✅ Topics creados correctamente.'"
+    networks:
+      - kafka-network
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.0.1
+    container_name: kafdrop
+    hostname: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29093
+      SERVER_SERVLET_CONTEXTPATH: "/"
+      CMD_ARGS: "--add-opens=java.base/java.lang=ALL-UNNAMED"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - kafka-network
+
+networks:
+  kafka-network:
+    driver: bridge

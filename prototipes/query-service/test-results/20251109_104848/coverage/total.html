@@ -1,0 +1,921 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>auth: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">query-service/internal/auth/auth_handler.go (85.7%)</option>
+				
+				<option value="file1">query-service/internal/auth/jwt.go (73.1%)</option>
+				
+				<option value="file2">query-service/internal/handlers/inventory_handler.go (68.3%)</option>
+				
+				<option value="file3">query-service/pkg/middleware/auth_middleware.go (86.2%)</option>
+				
+				<option value="file4">query-service/pkg/middleware/error_handler.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package auth
+
+import (
+        "net/http"
+        "time"
+
+        "query-service/pkg/errors"
+
+        "github.com/gin-gonic/gin"
+        "go.uber.org/zap"
+)
+
+// AuthHandler handles authentication requests
+type AuthHandler struct {
+        jwtManager *JWTManager
+        logger     *zap.Logger
+}
+
+// NewAuthHandler creates a new auth handler
+func NewAuthHandler(jwtManager *JWTManager, logger *zap.Logger) *AuthHandler <span class="cov5" title="4">{
+        return &amp;AuthHandler{
+                jwtManager: jwtManager,
+                logger:     logger,
+        }
+}</span>
+
+// LoginRequest represents the login request
+type LoginRequest struct {
+        Username string `json:"username" binding:"required" example:"admin"`
+        Password string `json:"password" binding:"required" example:"admin123"`
+}
+
+// LoginResponse represents the login response
+type LoginResponse struct {
+        Token     string    `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+        Type      string    `json:"type" example:"Bearer"`
+        ExpiresIn int       `json:"expires_in" example:"600"` // 10 minutes in seconds
+        ExpiresAt time.Time `json:"expires_at" example:"2024-01-15T12:00:00Z"`
+}
+
+// Login handles POST /api/v1/auth/login
+// @Summary      Login and get JWT token
+// @Description  Autentica un usuario y retorna un token JWT válido por 10 minutos. Usuarios disponibles: admin/admin123, user/user123, operator/operator123
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      LoginRequest  true  "Login credentials"
+// @Success      200      {object}  LoginResponse  "Token generado exitosamente"
+// @Failure      400      {object}  map[string]string  "Request inválido - credenciales faltantes"
+// @Failure      401      {object}  map[string]string  "Credenciales inválidas"
+// @Router       /auth/login [post]
+func (h *AuthHandler) Login(c *gin.Context) <span class="cov10" title="13">{
+        var req LoginRequest
+
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov7" title="6">{
+                h.logger.Warn("Invalid login request", zap.Error(err))
+                c.Error(errors.NewValidationError("invalid request", "username or password"))
+                c.Abort()
+                return
+        }</span>
+
+        // Simple authentication (for prototype)
+        // In production, this should validate against a user database
+        <span class="cov7" title="7">if !h.validateCredentials(req.Username, req.Password) </span><span class="cov4" title="3">{
+                h.logger.Warn("Invalid credentials",
+                        zap.String("username", req.Username),
+                )
+                c.Error(errors.NewStandardError("Unauthorized", "invalid credentials", "username or password incorrect"))
+                c.Abort()
+                c.JSON(http.StatusUnauthorized, errors.NewStandardError("Unauthorized", "invalid credentials", "username or password incorrect"))
+                return
+        }</span>
+
+        // Generate JWT token
+        <span class="cov5" title="4">token, err := h.jwtManager.GenerateToken(req.Username)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to generate token", zap.Error(err))
+                c.Error(errors.NewInternalError("failed to generate token", err))
+                c.Abort()
+                return
+        }</span>
+
+        <span class="cov5" title="4">expiresAt := time.Now().Add(10 * time.Minute)
+        response := LoginResponse{
+                Token:     token,
+                Type:      "Bearer",
+                ExpiresIn: 600, // 10 minutes in seconds
+                ExpiresAt: expiresAt,
+        }
+
+        h.logger.Info("User logged in successfully",
+                zap.String("username", req.Username),
+                zap.Time("expires_at", expiresAt),
+        )
+
+        c.JSON(http.StatusOK, response)</span>
+}
+
+// validateCredentials validates user credentials
+// For prototype: simple hardcoded validation
+// In production: validate against user database
+func (h *AuthHandler) validateCredentials(username, password string) bool <span class="cov7" title="7">{
+        // Simple validation for prototype
+        // In production, this should query a user database
+        validUsers := map[string]string{
+                "admin":    "admin123",
+                "user":     "user123",
+                "operator": "operator123",
+        }
+
+        expectedPassword, exists := validUsers[username]
+        if !exists </span><span class="cov3" title="2">{
+                return false
+        }</span>
+
+        <span class="cov6" title="5">return password == expectedPassword</span>
+}
+
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package auth
+
+import (
+        "errors"
+        "time"
+
+        "github.com/golang-jwt/jwt/v4"
+        "go.uber.org/zap"
+)
+
+var (
+        ErrInvalidToken = errors.New("invalid token")
+        ErrExpiredToken = errors.New("token expired")
+)
+
+// JWTClaims represents the JWT claims
+type JWTClaims struct {
+        Username string `json:"username"`
+        jwt.RegisteredClaims
+}
+
+// JWTManager handles JWT token generation and validation
+type JWTManager struct {
+        secretKey []byte
+        logger    *zap.Logger
+}
+
+// NewJWTManager creates a new JWT manager
+func NewJWTManager(secretKey string, logger *zap.Logger) *JWTManager <span class="cov10" title="8">{
+        return &amp;JWTManager{
+                secretKey: []byte(secretKey),
+                logger:    logger,
+        }
+}</span>
+
+// GenerateToken generates a new JWT token with 10 minutes expiration
+func (j *JWTManager) GenerateToken(username string) (string, error) <span class="cov8" title="6">{
+        now := time.Now()
+        expiresAt := now.Add(10 * time.Minute) // 10 minutes expiration
+
+        claims := JWTClaims{
+                Username: username,
+                RegisteredClaims: jwt.RegisteredClaims{
+                        ExpiresAt: jwt.NewNumericDate(expiresAt),
+                        IssuedAt:  jwt.NewNumericDate(now),
+                        NotBefore: jwt.NewNumericDate(now),
+                        Issuer:    "query-service",
+                        Subject:   username,
+                },
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        tokenString, err := token.SignedString(j.secretKey)
+        if err != nil </span><span class="cov0" title="0">{
+                j.logger.Error("Failed to generate token", zap.Error(err))
+                return "", err
+        }</span>
+
+        <span class="cov8" title="6">j.logger.Info("Token generated",
+                zap.String("username", username),
+                zap.Time("expires_at", expiresAt),
+        )
+
+        return tokenString, nil</span>
+}
+
+// ValidateToken validates a JWT token and returns the claims
+func (j *JWTManager) ValidateToken(tokenString string) (*JWTClaims, error) <span class="cov7" title="5">{
+        token, err := jwt.ParseWithClaims(tokenString, &amp;JWTClaims{}, func(token *jwt.Token) (interface{}, error) </span><span class="cov5" title="3">{
+                // Validate signing method
+                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                        return nil, ErrInvalidToken
+                }</span>
+                <span class="cov5" title="3">return j.secretKey, nil</span>
+        })
+
+        <span class="cov7" title="5">if err != nil </span><span class="cov7" title="4">{
+                if errors.Is(err, jwt.ErrTokenExpired) </span><span class="cov0" title="0">{
+                        j.logger.Warn("Token expired", zap.Error(err))
+                        return nil, ErrExpiredToken
+                }</span>
+                <span class="cov7" title="4">j.logger.Warn("Invalid token", zap.Error(err))
+                return nil, ErrInvalidToken</span>
+        }
+
+        <span class="cov1" title="1">claims, ok := token.Claims.(*JWTClaims)
+        if !ok || !token.Valid </span><span class="cov0" title="0">{
+                j.logger.Warn("Invalid token claims")
+                return nil, ErrInvalidToken
+        }</span>
+
+        <span class="cov1" title="1">return claims, nil</span>
+}
+
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package handlers
+
+import (
+        "fmt"
+        "net/http"
+        "strconv"
+        "time"
+
+        "query-service/internal/cache"
+        "query-service/internal/config"
+        "query-service/internal/models"
+        "query-service/internal/repository"
+
+        "github.com/gin-gonic/gin"
+        "github.com/google/uuid"
+        "go.uber.org/zap"
+)
+
+type InventoryHandler struct {
+        logger     *zap.Logger
+        repository repository.ReadRepository
+        cache      cache.Cache
+        cacheTTL   int
+}
+
+func NewInventoryHandler(logger *zap.Logger, cfg *config.Config) (*InventoryHandler, error) <span class="cov0" title="0">{
+        // Create repository (SQLite or InMemory)
+        var repo repository.ReadRepository
+        var err error
+
+        if cfg.SQLitePath != "" </span><span class="cov0" title="0">{
+                // Use SQLite repository (reads from same database as Listener Service)
+                logger.Info("Initializing SQLite repository", zap.String("path", cfg.SQLitePath))
+                repo, err = repository.NewSQLiteReadRepository(cfg.SQLitePath)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to create SQLite repository: %w", err)
+                }</span>
+                <span class="cov0" title="0">logger.Info("SQLite repository initialized successfully")</span>
+        } else<span class="cov0" title="0"> {
+                // Fallback to in-memory repository (for testing)
+                logger.Warn("Using in-memory repository (SQLite not configured)")
+                repo = repository.NewReadRepository()
+        }</span>
+
+        // Create cache client (optional)
+        <span class="cov0" title="0">var cacheClient cache.Cache
+        if cfg.UseCache </span><span class="cov0" title="0">{
+                logger.Info("Initializing cache (Redis)", zap.String("host", cfg.RedisHost), zap.String("port", cfg.RedisPort))
+                cacheClient = cache.NewCache(cfg, logger)
+                logger.Info("Cache initialized successfully")
+        }</span> else<span class="cov0" title="0"> {
+                logger.Info("Cache disabled (USE_CACHE=false)")
+                cacheClient = nil // Will be checked before use
+        }</span>
+
+        <span class="cov0" title="0">return &amp;InventoryHandler{
+                logger:     logger,
+                repository: repo,
+                cache:      cacheClient,
+                cacheTTL:   cfg.CacheTTL,
+        }, nil</span>
+}
+
+// ListItems handles GET /api/v1/inventory/items
+// @Summary      List inventory items
+// @Description  Obtiene una lista paginada de items de inventario. Los resultados están optimizados para lectura rápida desde cache.
+//
+// **Características:**
+// - Paginación automática (page, page_size)
+// - Cache de resultados para mejor rendimiento
+// - Respuestas rápidas y escalables
+// - Cache-first strategy para baja latencia
+//
+// **Ejemplos válidos:**
+// - Lista con paginación por defecto: `GET /api/v1/inventory/items`
+// - Lista con paginación personalizada: `GET /api/v1/inventory/items?page=1&amp;page_size=20`
+// - Primera página: `GET /api/v1/inventory/items?page=1&amp;page_size=10`
+//
+// **Ejemplos inválidos:**
+// - Página negativa: `GET /api/v1/inventory/items?page=-1`
+// - Page size mayor a 100: `GET /api/v1/inventory/items?page_size=200`
+// - Page size negativo: `GET /api/v1/inventory/items?page_size=-10`
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page      query     int  false  "Page number (default: 1, min: 1)" example(1)
+// @Param        page_size query     int  false  "Items per page (default: 10, min: 1, max: 100)" example(10)
+// @Success      200       {object}  ListItemsResponse  "Lista de items obtenida exitosamente"
+// @Failure      400       {object}  ErrorResponse      "Request inválido - parámetros de paginación inválidos"
+// @Failure      401       {object}  ErrorResponse      "No autorizado - token JWT inválido o faltante"
+// @Failure      500       {object}  ErrorResponse      "Error interno del servidor - error de lectura o conexión a base de datos"
+// @Failure      503       {object}  ErrorResponse      "Servicio no disponible - error de conexión al cache"
+// @Router       /inventory/items [get]
+func (h *InventoryHandler) ListItems(c *gin.Context) <span class="cov8" title="9">{
+        page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+        pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+        if page &lt; 1 </span><span class="cov3" title="2">{
+                page = 1
+        }</span>
+        <span class="cov8" title="9">if pageSize &lt; 1 </span><span class="cov3" title="2">{
+                pageSize = 10
+        }</span>
+        <span class="cov8" title="9">if pageSize &gt; 100 </span><span class="cov1" title="1">{
+                pageSize = 100
+        }</span>
+
+        // Try cache first (if enabled)
+        <span class="cov8" title="9">if h.cache != nil </span><span class="cov7" title="8">{
+                cacheKey := cacheKeyListItems(page, pageSize)
+                var cachedResponse ListItemsResponse
+                if err := cache.GetJSON(c.Request.Context(), h.cache, cacheKey, &amp;cachedResponse); err == nil </span><span class="cov1" title="1">{
+                        h.logger.Debug("Cache hit", zap.String("key", cacheKey))
+                        c.JSON(http.StatusOK, cachedResponse)
+                        return
+                }</span>
+        }
+
+        // Cache miss - fetch from repository
+        <span class="cov7" title="8">items, total, err := h.repository.ListItems(c.Request.Context(), page, pageSize)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to list items", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list items"})
+                return
+        }</span>
+
+        // Convert to response models
+        <span class="cov7" title="8">responseItems := make([]InventoryItemResponse, len(items))
+        for i, item := range items </span><span class="cov9" title="12">{
+                responseItems[i] = InventoryItemResponse{
+                        ID:          item.ID,
+                        SKU:         item.SKU,
+                        Name:        item.Name,
+                        Description: item.Description,
+                        Quantity:    item.Quantity,
+                        Reserved:    item.Reserved,
+                        Available:   item.Available,
+                        CreatedAt:   item.CreatedAt.Format(time.RFC3339),
+                        UpdatedAt:   item.UpdatedAt.Format(time.RFC3339),
+                }
+        }</span>
+
+        <span class="cov7" title="8">totalPages := (total + pageSize - 1) / pageSize
+        response := ListItemsResponse{
+                Items:      responseItems,
+                Total:      total,
+                Page:       page,
+                PageSize:   pageSize,
+                TotalPages: totalPages,
+        }
+
+        // Cache the response (if enabled)
+        if h.cache != nil </span><span class="cov7" title="7">{
+                cacheKey := cacheKeyListItems(page, pageSize)
+                cache.SetJSON(c.Request.Context(), h.cache, cacheKey, response, cache.TTL(h.cacheTTL))
+        }</span>
+
+        <span class="cov7" title="8">c.JSON(http.StatusOK, response)</span>
+}
+
+// GetItemByID handles GET /api/v1/inventory/items/:id
+// @Summary      Get inventory item by ID
+// @Description  Obtiene un item de inventario por su ID. Optimizado para lectura rápida desde cache.
+//
+// **Características:**
+// - Cache de resultados individuales
+// - Respuestas ultra-rápidas (cache hit)
+// - Escalable horizontalmente
+// - Cache-first strategy para baja latencia
+//
+// **Ejemplos válidos:**
+// - Obtener item por ID válido: `GET /api/v1/inventory/items/550e8400-e29b-41d4-a716-446655440000`
+//
+// **Ejemplos inválidos:**
+// - ID inválido (UUID malformado): `GET /api/v1/inventory/items/invalid-id`
+// - ID no encontrado: `GET /api/v1/inventory/items/550e8400-e29b-41d4-a716-446655440000` (si no existe)
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Success      200  {object}  InventoryItemResponse  "Item obtenido exitosamente"
+// @Failure      400  {object}  ErrorResponse          "ID inválido - UUID malformado"
+// @Failure      401  {object}  ErrorResponse          "No autorizado - token JWT inválido o faltante"
+// @Failure      404  {object}  ErrorResponse          "Item no encontrado"
+// @Failure      500  {object}  ErrorResponse          "Error interno del servidor - error de lectura o conexión a base de datos"
+// @Failure      503  {object}  ErrorResponse          "Servicio no disponible - error de conexión al cache"
+// @Router       /inventory/items/{id} [get]
+func (h *InventoryHandler) GetItemByID(c *gin.Context) <span class="cov5" title="4">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        // Try cache first (if enabled)
+        <span class="cov4" title="3">if h.cache != nil </span><span class="cov4" title="3">{
+                cacheKey := cacheKeyItemByID(id.String())
+                var cachedItem models.InventoryItem
+                if err := cache.GetJSON(c.Request.Context(), h.cache, cacheKey, &amp;cachedItem); err == nil </span><span class="cov1" title="1">{
+                        h.logger.Debug("Cache hit", zap.String("key", cacheKey))
+                        response := InventoryItemResponse{
+                                ID:          cachedItem.ID,
+                                SKU:         cachedItem.SKU,
+                                Name:        cachedItem.Name,
+                                Description: cachedItem.Description,
+                                Quantity:    cachedItem.Quantity,
+                                Reserved:    cachedItem.Reserved,
+                                Available:   cachedItem.Available,
+                                CreatedAt:   cachedItem.CreatedAt.Format(time.RFC3339),
+                                UpdatedAt:   cachedItem.UpdatedAt.Format(time.RFC3339),
+                        }
+                        c.JSON(http.StatusOK, response)
+                        return
+                }</span>
+        }
+
+        // Cache miss - fetch from repository
+        <span class="cov3" title="2">item, err := h.repository.FindByID(c.Request.Context(), id)
+        if err != nil </span><span class="cov1" title="1">{
+                if err == repository.ErrItemNotFound </span><span class="cov1" title="1">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get item"})
+                return</span>
+        }
+
+        <span class="cov1" title="1">response := InventoryItemResponse{
+                ID:          item.ID,
+                SKU:         item.SKU,
+                Name:        item.Name,
+                Description: item.Description,
+                Quantity:    item.Quantity,
+                Reserved:    item.Reserved,
+                Available:   item.Available,
+                CreatedAt:   item.CreatedAt.Format(time.RFC3339),
+                UpdatedAt:   item.UpdatedAt.Format(time.RFC3339),
+        }
+
+        // Cache the response (if enabled)
+        if h.cache != nil </span><span class="cov1" title="1">{
+                cacheKey := cacheKeyItemByID(id.String())
+                cache.SetJSON(c.Request.Context(), h.cache, cacheKey, item, cache.TTL(h.cacheTTL))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, response)</span>
+}
+
+// GetItemBySKU handles GET /api/v1/inventory/items/sku/:sku
+// @Summary      Get inventory item by SKU
+// @Description  Obtiene un item de inventario por su SKU. Optimizado para lectura rápida desde cache.
+//
+// **Características:**
+// - Cache de resultados por SKU
+// - Respuestas ultra-rápidas (cache hit)
+// - Búsqueda optimizada
+// - Cache-first strategy para baja latencia
+//
+// **Ejemplos válidos:**
+// - Obtener item por SKU válido: `GET /api/v1/inventory/items/sku/SKU-001`
+// - Obtener item por SKU con formato diferente: `GET /api/v1/inventory/items/sku/PROD-2024-ABC`
+//
+// **Ejemplos inválidos:**
+// - SKU vacío: `GET /api/v1/inventory/items/sku/`
+// - SKU no encontrado: `GET /api/v1/inventory/items/sku/NONEXISTENT-SKU`
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        sku   path      string  true  "SKU (Stock Keeping Unit)" example(SKU-001)
+// @Success      200   {object}  InventoryItemResponse  "Item obtenido exitosamente"
+// @Failure      400   {object}  ErrorResponse          "SKU inválido - SKU vacío"
+// @Failure      401   {object}  ErrorResponse          "No autorizado - token JWT inválido o faltante"
+// @Failure      404   {object}  ErrorResponse          "Item no encontrado"
+// @Failure      500   {object}  ErrorResponse          "Error interno del servidor - error de lectura o conexión a base de datos"
+// @Failure      503   {object}  ErrorResponse          "Servicio no disponible - error de conexión al cache"
+// @Router       /inventory/items/sku/{sku} [get]
+func (h *InventoryHandler) GetItemBySKU(c *gin.Context) <span class="cov3" title="2">{
+        sku := c.Param("sku")
+        if sku == "" </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "sku is required"})
+                return
+        }</span>
+
+        // Try cache first (if enabled)
+        <span class="cov3" title="2">if h.cache != nil </span><span class="cov3" title="2">{
+                cacheKey := cacheKeyItemBySKU(sku)
+                var cachedItem models.InventoryItem
+                if err := cache.GetJSON(c.Request.Context(), h.cache, cacheKey, &amp;cachedItem); err == nil </span><span class="cov1" title="1">{
+                        h.logger.Debug("Cache hit", zap.String("key", cacheKey))
+                        response := InventoryItemResponse{
+                                ID:          cachedItem.ID,
+                                SKU:         cachedItem.SKU,
+                                Name:        cachedItem.Name,
+                                Description: cachedItem.Description,
+                                Quantity:    cachedItem.Quantity,
+                                Reserved:    cachedItem.Reserved,
+                                Available:   cachedItem.Available,
+                                CreatedAt:   cachedItem.CreatedAt.Format(time.RFC3339),
+                                UpdatedAt:   cachedItem.UpdatedAt.Format(time.RFC3339),
+                        }
+                        c.JSON(http.StatusOK, response)
+                        return
+                }</span>
+        }
+
+        // Cache miss - fetch from repository
+        <span class="cov1" title="1">item, err := h.repository.FindBySKU(c.Request.Context(), sku)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == repository.ErrItemNotFound </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item by SKU", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get item"})
+                return</span>
+        }
+
+        <span class="cov1" title="1">response := InventoryItemResponse{
+                ID:          item.ID,
+                SKU:         item.SKU,
+                Name:        item.Name,
+                Description: item.Description,
+                Quantity:    item.Quantity,
+                Reserved:    item.Reserved,
+                Available:   item.Available,
+                CreatedAt:   item.CreatedAt.Format(time.RFC3339),
+                UpdatedAt:   item.UpdatedAt.Format(time.RFC3339),
+        }
+
+        // Cache the response (if enabled)
+        if h.cache != nil </span><span class="cov1" title="1">{
+                cacheKey := cacheKeyItemBySKU(sku)
+                cache.SetJSON(c.Request.Context(), h.cache, cacheKey, item, cache.TTL(h.cacheTTL))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, response)</span>
+}
+
+// GetStockStatus handles GET /api/v1/inventory/items/:id/stock
+// @Summary      Get stock status
+// @Description  Obtiene el estado de stock de un item (cantidad total, reservada y disponible). Optimizado para lectura rápida desde cache.
+//
+// **Características:**
+// - Cache de estado de stock (TTL más corto para datos frecuentemente actualizados)
+// - Respuestas ultra-rápidas (cache hit)
+// - Ideal para consultas frecuentes de disponibilidad
+// - Cache-first strategy para baja latencia
+//
+// **Ejemplos válidos:**
+// - Obtener estado de stock por ID válido: `GET /api/v1/inventory/items/550e8400-e29b-41d4-a716-446655440000/stock`
+//
+// **Ejemplos inválidos:**
+// - ID inválido (UUID malformado): `GET /api/v1/inventory/items/invalid-id/stock`
+// - ID no encontrado: `GET /api/v1/inventory/items/550e8400-e29b-41d4-a716-446655440000/stock` (si no existe)
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Success      200  {object}  StockStatusResponse  "Estado de stock obtenido exitosamente"
+// @Failure      400  {object}  ErrorResponse         "ID inválido - UUID malformado"
+// @Failure      401  {object}  ErrorResponse         "No autorizado - token JWT inválido o faltante"
+// @Failure      404  {object}  ErrorResponse         "Item no encontrado"
+// @Failure      500  {object}  ErrorResponse         "Error interno del servidor - error de lectura o conexión a base de datos"
+// @Failure      503  {object}  ErrorResponse         "Servicio no disponible - error de conexión al cache"
+// @Router       /inventory/items/{id}/stock [get]
+func (h *InventoryHandler) GetStockStatus(c *gin.Context) <span class="cov3" title="2">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        // Try cache first (if enabled)
+        <span class="cov3" title="2">if h.cache != nil </span><span class="cov3" title="2">{
+                cacheKey := cacheKeyStockStatus(id.String())
+                var cachedStatus models.StockStatus
+                if err := cache.GetJSON(c.Request.Context(), h.cache, cacheKey, &amp;cachedStatus); err == nil </span><span class="cov1" title="1">{
+                        h.logger.Debug("Cache hit", zap.String("key", cacheKey))
+                        response := StockStatusResponse{
+                                ID:        cachedStatus.ID,
+                                SKU:       cachedStatus.SKU,
+                                Quantity:  cachedStatus.Quantity,
+                                Reserved:  cachedStatus.Reserved,
+                                Available: cachedStatus.Available,
+                                UpdatedAt: cachedStatus.UpdatedAt.Format(time.RFC3339),
+                        }
+                        c.JSON(http.StatusOK, response)
+                        return
+                }</span>
+        }
+
+        // Cache miss - fetch from repository
+        <span class="cov1" title="1">status, err := h.repository.GetStockStatus(c.Request.Context(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == repository.ErrItemNotFound </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to get stock status", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get stock status"})
+                return</span>
+        }
+
+        <span class="cov1" title="1">response := StockStatusResponse{
+                ID:        status.ID,
+                SKU:       status.SKU,
+                Quantity:  status.Quantity,
+                Reserved:  status.Reserved,
+                Available: status.Available,
+                UpdatedAt: status.UpdatedAt.Format(time.RFC3339),
+        }
+
+        // Cache the response (if enabled, shorter TTL for stock status as it changes frequently)
+        if h.cache != nil </span><span class="cov1" title="1">{
+                cacheKey := cacheKeyStockStatus(id.String())
+                cache.SetJSON(c.Request.Context(), h.cache, cacheKey, status, cache.TTL(h.cacheTTL/2))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, response)</span>
+}
+
+// Cache key helpers
+func cacheKeyItemByID(id string) string <span class="cov5" title="4">{
+        return "item:id:" + id
+}</span>
+
+func cacheKeyItemBySKU(sku string) string <span class="cov4" title="3">{
+        return "item:sku:" + sku
+}</span>
+
+func cacheKeyStockStatus(id string) string <span class="cov4" title="3">{
+        return "stock:" + id
+}</span>
+
+func cacheKeyListItems(page, pageSize int) string <span class="cov10" title="15">{
+        return "items:list:" + strconv.Itoa(page) + ":" + strconv.Itoa(pageSize)
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package middleware
+
+import (
+        "net/http"
+        "strings"
+
+        "query-service/internal/auth"
+        "query-service/pkg/errors"
+
+        "github.com/gin-gonic/gin"
+        "go.uber.org/zap"
+)
+
+// AuthMiddleware validates JWT tokens
+func AuthMiddleware(jwtManager *auth.JWTManager, logger *zap.Logger) gin.HandlerFunc <span class="cov7" title="5">{
+        return func(c *gin.Context) </span><span class="cov10" title="10">{
+                // Get token from Authorization header
+                authHeader := c.GetHeader("Authorization")
+                if authHeader == "" </span><span class="cov1" title="1">{
+                        logger.Warn("Missing authorization header",
+                                zap.String("path", c.Request.URL.Path),
+                                zap.String("method", c.Request.Method),
+                        )
+                        c.JSON(http.StatusUnauthorized, errors.NewStandardError("Unauthorized", "missing authorization header", "Header: Authorization"))
+                        c.Abort()
+                        return
+                }</span>
+
+                // Extract token from "Bearer &lt;token&gt;"
+                <span class="cov9" title="9">parts := strings.Split(authHeader, " ")
+                if len(parts) != 2 || parts[0] != "Bearer" </span><span class="cov5" title="3">{
+                        logger.Warn("Invalid authorization header format",
+                                zap.String("path", c.Request.URL.Path),
+                                zap.String("method", c.Request.Method),
+                        )
+                        c.JSON(http.StatusUnauthorized, errors.NewStandardError("Unauthorized", "invalid authorization header format", "Expected: Bearer &lt;token&gt;"))
+                        c.Abort()
+                        return
+                }</span>
+
+                <span class="cov8" title="6">tokenString := parts[1]
+
+                // Validate token
+                claims, err := jwtManager.ValidateToken(tokenString)
+                if err != nil </span><span class="cov6" title="4">{
+                        if err == auth.ErrExpiredToken </span><span class="cov0" title="0">{
+                                logger.Warn("Token expired",
+                                        zap.String("path", c.Request.URL.Path),
+                                        zap.String("method", c.Request.Method),
+                                )
+                                c.JSON(http.StatusUnauthorized, errors.NewStandardError("Unauthorized", "token expired", "Token has expired, please login again"))
+                                c.Abort()
+                                return
+                        }</span>
+
+                        <span class="cov6" title="4">logger.Warn("Invalid token",
+                                zap.String("path", c.Request.URL.Path),
+                                zap.String("method", c.Request.Method),
+                                zap.Error(err),
+                        )
+                        c.JSON(http.StatusUnauthorized, errors.NewStandardError("Unauthorized", "invalid token", err.Error()))
+                        c.Abort()
+                        return</span>
+                }
+
+                // Set user information in context
+                <span class="cov3" title="2">c.Set("username", claims.Username)
+                c.Set("user_id", claims.Subject)
+
+                logger.Debug("Token validated",
+                        zap.String("username", claims.Username),
+                        zap.String("path", c.Request.URL.Path),
+                        zap.String("method", c.Request.Method),
+                )
+
+                c.Next()</span>
+        }
+}
+
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package middleware
+
+import (
+        "net/http"
+
+        "query-service/pkg/errors"
+
+        "github.com/gin-gonic/gin"
+        "go.uber.org/zap"
+)
+
+// ErrorHandler is a global error handling middleware
+func ErrorHandler(logger *zap.Logger) gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                c.Next()
+
+                // Check if there are any errors
+                if len(c.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                        err := c.Errors.Last().Err
+
+                        // Check if it's a StandardError
+                        if stdErr, ok := err.(*errors.StandardError); ok </span><span class="cov0" title="0">{
+                                logger.Warn("Request error",
+                                        zap.String("error_code", stdErr.Code),
+                                        zap.String("message", stdErr.Message),
+                                        zap.String("details", stdErr.Details),
+                                        zap.String("path", c.Request.URL.Path),
+                                        zap.String("method", c.Request.Method),
+                                )
+                                c.JSON(stdErr.HTTPStatus(), stdErr)
+                                return
+                        }</span>
+
+                        // Handle other errors
+                        <span class="cov0" title="0">logger.Error("Unhandled error",
+                                zap.Error(err),
+                                zap.String("path", c.Request.URL.Path),
+                                zap.String("method", c.Request.Method),
+                        )
+                        c.JSON(http.StatusInternalServerError, errors.NewInternalError("internal server error", err))</span>
+                }
+        }
+}
+
+// RecoveryHandler is a panic recovery middleware
+func RecoveryHandler(logger *zap.Logger) gin.HandlerFunc <span class="cov0" title="0">{
+        return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) </span><span class="cov0" title="0">{
+                logger.Error("Panic recovered",
+                        zap.Any("panic", recovered),
+                        zap.String("path", c.Request.URL.Path),
+                        zap.String("method", c.Request.Method),
+                )
+                c.JSON(http.StatusInternalServerError, errors.NewInternalError("internal server error", nil))
+        }</span>)
+}
+
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

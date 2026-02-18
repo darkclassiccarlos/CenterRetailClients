@@ -1,0 +1,41 @@
+# query-service/internal/handlers.test
+ld: warning: '/private/var/folders/wq/lmx98bc14mg7k0txbmdbqs9m0000gn/T/go-link-2655420807/go.o' has malformed LC_DYSYMTAB, expected 125 undefined symbols to start at index 20184, found 210 undefined symbols starting at index 74
+=== RUN   TestListItems_CacheHit
+--- PASS: TestListItems_CacheHit (0.00s)
+=== RUN   TestListItems_CacheMiss
+--- PASS: TestListItems_CacheMiss (0.00s)
+=== RUN   TestListItems_NoCache
+--- PASS: TestListItems_NoCache (0.00s)
+=== RUN   TestGetItemByID_CacheHit
+--- PASS: TestGetItemByID_CacheHit (0.00s)
+=== RUN   TestGetItemByID_CacheMiss
+--- PASS: TestGetItemByID_CacheMiss (0.00s)
+=== RUN   TestGetItemByID_NotFound
+--- PASS: TestGetItemByID_NotFound (0.00s)
+=== RUN   TestGetItemByID_InvalidUUID
+--- PASS: TestGetItemByID_InvalidUUID (0.00s)
+=== RUN   TestGetItemBySKU_CacheHit
+--- PASS: TestGetItemBySKU_CacheHit (0.00s)
+=== RUN   TestGetItemBySKU_CacheMiss
+--- PASS: TestGetItemBySKU_CacheMiss (0.00s)
+=== RUN   TestGetStockStatus_CacheHit
+--- PASS: TestGetStockStatus_CacheHit (0.00s)
+=== RUN   TestGetStockStatus_CacheMiss
+--- PASS: TestGetStockStatus_CacheMiss (0.00s)
+=== RUN   TestListItems_Pagination
+--- PASS: TestListItems_Pagination (0.00s)
+=== RUN   TestListItems_InvalidPagination
+=== RUN   TestListItems_InvalidPagination/negative_page
+=== RUN   TestListItems_InvalidPagination/zero_page
+=== RUN   TestListItems_InvalidPagination/negative_page_size
+=== RUN   TestListItems_InvalidPagination/zero_page_size
+=== RUN   TestListItems_InvalidPagination/page_size_too_large
+--- PASS: TestListItems_InvalidPagination (0.00s)
+    --- PASS: TestListItems_InvalidPagination/negative_page (0.00s)
+    --- PASS: TestListItems_InvalidPagination/zero_page (0.00s)
+    --- PASS: TestListItems_InvalidPagination/negative_page_size (0.00s)
+    --- PASS: TestListItems_InvalidPagination/zero_page_size (0.00s)
+    --- PASS: TestListItems_InvalidPagination/page_size_too_large (0.00s)
+PASS
+	query-service/internal/handlers	coverage: 68.3% of statements
+ok  	query-service/internal/handlers	0.352s	coverage: 68.3% of statements

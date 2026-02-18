@@ -1,0 +1,610 @@
+basePath: /api/v1
+definitions:
+  auth.LoginRequest:
+    properties:
+      password:
+        example: admin123
+        type: string
+      username:
+        example: admin
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  auth.LoginResponse:
+    properties:
+      expires_at:
+        example: "2024-01-15T12:00:00Z"
+        type: string
+      expires_in:
+        description: 10 minutes in seconds
+        example: 600
+        type: integer
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      type:
+        example: Bearer
+        type: string
+    type: object
+  handlers.AdjustStockRequest:
+    description: Request to adjust stock quantity (can be positive or negative)
+    properties:
+      quantity:
+        description: |-
+          Quantity adjustment (positive to add, negative to subtract)
+          @Example 10
+          @Example -5
+          @Example 50
+        example: 10
+        type: integer
+    required:
+    - quantity
+    type: object
+  handlers.CreateItemRequest:
+    description: Request to create a new inventory item
+    properties:
+      description:
+        description: |-
+          Product description (optional)
+          @Example "High-performance laptop with 16GB RAM and 512GB SSD"
+          @Example ""
+        example: High-performance laptop with 16GB RAM and 512GB SSD
+        type: string
+      name:
+        description: |-
+          Product name
+          @Example "Laptop Dell XPS 15"
+          @Example "iPhone 15 Pro Max"
+        example: Laptop Dell XPS 15
+        type: string
+      quantity:
+        description: |-
+          Initial stock quantity (must be >= 0)
+          @Example 100
+          @Example 0
+          @Example 500
+        example: 100
+        minimum: 0
+        type: integer
+      sku:
+        description: |-
+          SKU (Stock Keeping Unit) - unique identifier for the product
+          @Example "SKU-001"
+          @Example "PROD-2024-ABC"
+        example: SKU-001
+        type: string
+    required:
+    - name
+    - quantity
+    - sku
+    type: object
+  handlers.CreateItemResponse:
+    description: Response after successfully creating an inventory item
+    properties:
+      created_at:
+        description: Creation timestamp (ISO 8601 format)
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      description:
+        description: Product description
+        example: High-performance laptop with 16GB RAM and 512GB SSD
+        type: string
+      id:
+        description: Unique item identifier (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        description: Product name
+        example: Laptop Dell XPS 15
+        type: string
+      quantity:
+        description: Current stock quantity
+        example: 100
+        type: integer
+      sku:
+        description: SKU (Stock Keeping Unit)
+        example: SKU-001
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    description: Error response with error message
+    properties:
+      error:
+        description: |-
+          Error message describing what went wrong
+          @Example "invalid request: sku is required"
+          @Example "item not found"
+          @Example "insufficient stock available"
+        example: 'invalid request: sku is required'
+        type: string
+    type: object
+  handlers.ReleaseStockRequest:
+    description: Request to release previously reserved stock
+    properties:
+      quantity:
+        description: |-
+          Quantity to release (must be >= 1)
+          @Example 5
+          @Example 10
+          @Example 1
+        example: 5
+        minimum: 1
+        type: integer
+    required:
+    - quantity
+    type: object
+  handlers.ReserveStockRequest:
+    description: Request to reserve stock for an order
+    properties:
+      quantity:
+        description: |-
+          Quantity to reserve (must be >= 1)
+          @Example 5
+          @Example 10
+          @Example 1
+        example: 5
+        minimum: 1
+        type: integer
+    required:
+    - quantity
+    type: object
+  handlers.StockResponse:
+    description: Response for stock-related operations
+    properties:
+      available:
+        description: Available stock (total - reserved)
+        example: 80
+        type: integer
+      id:
+        description: Unique item identifier (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      quantity:
+        description: Total stock quantity
+        example: 100
+        type: integer
+      reserved:
+        description: Reserved stock quantity
+        example: 20
+        type: integer
+      updated_at:
+        description: Last update timestamp (ISO 8601 format)
+        example: "2024-01-15T12:00:00Z"
+        type: string
+    type: object
+  handlers.SuccessResponse:
+    description: Success response with message
+    properties:
+      message:
+        description: |-
+          Success message
+          @Example "item deleted successfully"
+        example: item deleted successfully
+        type: string
+    type: object
+  handlers.UpdateItemRequest:
+    description: Request to update an existing inventory item
+    properties:
+      description:
+        description: |-
+          Updated product description (optional)
+          @Example "High-performance laptop with 32GB RAM and 1TB SSD"
+        example: High-performance laptop with 32GB RAM and 1TB SSD
+        type: string
+      name:
+        description: |-
+          Updated product name
+          @Example "Laptop Dell XPS 15 - Updated"
+        example: Laptop Dell XPS 15 - Updated
+        type: string
+    required:
+    - name
+    type: object
+  handlers.UpdateItemResponse:
+    description: Response after successfully updating an inventory item
+    properties:
+      description:
+        description: Updated product description
+        example: High-performance laptop with 32GB RAM and 1TB SSD
+        type: string
+      id:
+        description: Unique item identifier (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        description: Updated product name
+        example: Laptop Dell XPS 15 - Updated
+        type: string
+      quantity:
+        description: Current stock quantity
+        example: 100
+        type: integer
+      sku:
+        description: SKU (Stock Keeping Unit)
+        example: SKU-001
+        type: string
+      updated_at:
+        description: Last update timestamp (ISO 8601 format)
+        example: "2024-01-15T11:45:00Z"
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: carlosand_01@hotmail.com
+    name: API Support
+  description: API de escritura para el sistema de inventario basado en arquitectura
+    CQRS + EDA
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Command Service API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 'Autentica un usuario y retorna un token JWT válido por 10 minutos.
+        Usuarios disponibles: admin/admin123, user/user123, operator/operator123'
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token generado exitosamente
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Request inválido - credenciales faltantes
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Credenciales inválidas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login and get JWT token
+      tags:
+      - auth
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Verifica el estado del servicio. Retorna el estado del servicio
+        y su nombre.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Servicio operativo
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
+  /inventory/items:
+    post:
+      consumes:
+      - application/json
+      description: Crea un nuevo item en el inventario. El SKU debe ser único y la
+        cantidad inicial debe ser >= 0.
+      parameters:
+      - description: Item creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Item creado exitosamente
+          schema:
+            $ref: '#/definitions/handlers.CreateItemResponse'
+        "400":
+          description: Request inválido - campos requeridos faltantes o valores inválidos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflicto - SKU duplicado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de persistencia o conexión
+            a base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al event broker
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new inventory item
+      tags:
+      - inventory
+  /inventory/items/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina un item del inventario. Esta operación no se puede deshacer.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item eliminado exitosamente
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de persistencia o conexión
+            a base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al event broker
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an inventory item
+      tags:
+      - inventory
+    put:
+      consumes:
+      - application/json
+      description: Actualiza un item existente en el inventario. Solo se pueden actualizar
+        el nombre y la descripción.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Item update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item actualizado exitosamente
+          schema:
+            $ref: '#/definitions/handlers.UpdateItemResponse'
+        "400":
+          description: Request inválido - ID inválido o campos requeridos faltantes
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de persistencia o conexión
+            a base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al event broker
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an inventory item
+      tags:
+      - inventory
+  /inventory/items/{id}/adjust:
+    post:
+      consumes:
+      - application/json
+      description: Ajusta la cantidad de stock de un item. Valores positivos aumentan
+        el stock, valores negativos lo disminuyen. No se puede ajustar a un valor
+        negativo total.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock adjustment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AdjustStockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Stock ajustado exitosamente
+          schema:
+            $ref: '#/definitions/handlers.StockResponse'
+        "400":
+          description: Request inválido - ID inválido, cantidad faltante o stock insuficiente
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de persistencia o conexión
+            a base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al event broker
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Adjust stock quantity
+      tags:
+      - inventory
+  /inventory/items/{id}/release:
+    post:
+      consumes:
+      - application/json
+      description: Libera stock previamente reservado de un item. La cantidad a liberar
+        no puede exceder la cantidad reservada.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock release request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ReleaseStockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Stock liberado exitosamente
+          schema:
+            $ref: '#/definitions/handlers.StockResponse'
+        "400":
+          description: Request inválido - ID inválido, cantidad inválida o cantidad
+            a liberar excede lo reservado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de persistencia o conexión
+            a base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al event broker
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Release reserved stock
+      tags:
+      - inventory
+  /inventory/items/{id}/reserve:
+    post:
+      consumes:
+      - application/json
+      description: Reserva una cantidad de stock de un item. La cantidad reservada
+        no puede exceder el stock disponible.
+      parameters:
+      - description: Item ID (UUID)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock reservation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ReserveStockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Stock reservado exitosamente
+          schema:
+            $ref: '#/definitions/handlers.StockResponse'
+        "400":
+          description: Request inválido - ID inválido, cantidad inválida o stock insuficiente
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: No autorizado - token JWT inválido o faltante
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Item no encontrado
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Error interno del servidor - error de persistencia o conexión
+            a base de datos
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "503":
+          description: Servicio no disponible - error de conexión al event broker
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reserve stock
+      tags:
+      - inventory
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: 'Type "Bearer" followed by a space and JWT token. Example: "Bearer
+      eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,5 @@
+# query-service/internal/auth
+package query-service/internal/auth
+	imports query-service/pkg/middleware: import cycle not allowed in test
+FAIL	query-service/internal/auth [setup failed]
+FAIL

@@ -1,0 +1,60 @@
+=== RUN   TestLogin_Success
+--- PASS: TestLogin_Success (0.01s)
+=== RUN   TestLogin_InvalidCredentials
+=== RUN   TestLogin_InvalidCredentials/wrong_password
+=== RUN   TestLogin_InvalidCredentials/wrong_username
+=== RUN   TestLogin_InvalidCredentials/both_wrong
+=== RUN   TestLogin_InvalidCredentials/empty_username
+    auth_handler_test.go:124: 
+        	Error Trace:	/Users/carlosbautista/Desktop/Escritorio - MacBook Pro de Carlos/PruebaMeli/prototipes/query-service/internal/auth/auth_handler_test.go:124
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 400
+        	Test:       	TestLogin_InvalidCredentials/empty_username
+=== RUN   TestLogin_InvalidCredentials/empty_password
+    auth_handler_test.go:124: 
+        	Error Trace:	/Users/carlosbautista/Desktop/Escritorio - MacBook Pro de Carlos/PruebaMeli/prototipes/query-service/internal/auth/auth_handler_test.go:124
+        	Error:      	Not equal: 
+        	            	expected: 401
+        	            	actual  : 400
+        	Test:       	TestLogin_InvalidCredentials/empty_password
+--- FAIL: TestLogin_InvalidCredentials (0.00s)
+    --- PASS: TestLogin_InvalidCredentials/wrong_password (0.00s)
+    --- PASS: TestLogin_InvalidCredentials/wrong_username (0.00s)
+    --- PASS: TestLogin_InvalidCredentials/both_wrong (0.00s)
+    --- FAIL: TestLogin_InvalidCredentials/empty_username (0.00s)
+    --- FAIL: TestLogin_InvalidCredentials/empty_password (0.00s)
+=== RUN   TestLogin_ValidUsers
+=== RUN   TestLogin_ValidUsers/admin
+=== RUN   TestLogin_ValidUsers/user
+=== RUN   TestLogin_ValidUsers/operator
+--- PASS: TestLogin_ValidUsers (0.00s)
+    --- PASS: TestLogin_ValidUsers/admin (0.00s)
+    --- PASS: TestLogin_ValidUsers/user (0.00s)
+    --- PASS: TestLogin_ValidUsers/operator (0.00s)
+=== RUN   TestLogin_InvalidRequest
+=== RUN   TestLogin_InvalidRequest/empty_body
+=== RUN   TestLogin_InvalidRequest/invalid_JSON
+=== RUN   TestLogin_InvalidRequest/missing_username
+=== RUN   TestLogin_InvalidRequest/missing_password
+--- PASS: TestLogin_InvalidRequest (0.00s)
+    --- PASS: TestLogin_InvalidRequest/empty_body (0.00s)
+    --- PASS: TestLogin_InvalidRequest/invalid_JSON (0.00s)
+    --- PASS: TestLogin_InvalidRequest/missing_username (0.00s)
+    --- PASS: TestLogin_InvalidRequest/missing_password (0.00s)
+=== RUN   TestJWTManager_GenerateAndValidateToken
+--- PASS: TestJWTManager_GenerateAndValidateToken (0.00s)
+=== RUN   TestJWTManager_InvalidToken
+=== RUN   TestJWTManager_InvalidToken/empty_token
+=== RUN   TestJWTManager_InvalidToken/invalid_format
+=== RUN   TestJWTManager_InvalidToken/wrong_signature
+--- PASS: TestJWTManager_InvalidToken (0.00s)
+    --- PASS: TestJWTManager_InvalidToken/empty_token (0.00s)
+    --- PASS: TestJWTManager_InvalidToken/invalid_format (0.00s)
+    --- PASS: TestJWTManager_InvalidToken/wrong_signature (0.00s)
+=== RUN   TestJWTManager_TokenWithDifferentSecret
+--- PASS: TestJWTManager_TokenWithDifferentSecret (0.00s)
+FAIL
+	query-service/internal/auth	coverage: 79.6% of statements
+FAIL	query-service/internal/auth	0.456s
+FAIL

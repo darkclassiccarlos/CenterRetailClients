@@ -1,0 +1,16 @@
+========================================
+Resumen de Pruebas Unitarias
+========================================
+Fecha: sábado,  8 de noviembre de 2025, 16:53:25 -05
+Timestamp: 20251108_165317
+
+Total de paquetes: 4
+Exitosos: 4
+Fallidos: 0
+
+Cobertura total: 51.0%
+
+Archivos generados:
+- test-results/20251108_165317/coverage/total.html (Reporte de cobertura HTML)
+- test-results/20251108_165317/coverage/total.out (Datos de cobertura)
+- test-results/20251108_165317/*/test_output.txt (Output de pruebas por paquete)

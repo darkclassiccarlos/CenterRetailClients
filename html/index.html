@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Prototipo de Inventario (CQRS + EDA)</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f4f4f9; 
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .section { 
+            background-color: #ffffff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            margin-bottom: 20px; 
+        }
+        .section h2 { 
+            margin-top: 0; 
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .status-link, .log-box { margin-bottom: 15px; }
+        .log-box { 
+            background-color: #1e1e1e; 
+            color: #0f0; 
+            padding: 15px; 
+            border-radius: 4px; 
+            overflow-y: scroll; 
+            max-height: 300px; 
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .service-status {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .service-status-item {
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            min-width: 200px;
+        }
+        .status-active {
+            background-color: #4caf50;
+            color: white;
+        }
+        .status-inactive {
+            background-color: #f44336;
+            color: white;
+        }
+        .status-checking {
+            background-color: #ff9800;
+            color: white;
+        }
+        .inventory-table { 
+            width: 100%; 
+            margin-top: 15px; 
+            border-collapse: collapse; 
+        }
+        .inventory-table th, .inventory-table td { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            text-align: left; 
+        }
+        .inventory-table th {
+            background-color: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+        .inventory-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .inventory-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .command-form { 
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .command-form input, .command-form button, .command-form select { 
+            padding: 10px; 
+            border-radius: 4px; 
+            border: 1px solid #ccc; 
+            font-size: 14px;
+        }
+        .command-form input {
+            flex: 1;
+            min-width: 150px;
+        }
+        .command-form button {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .command-form button:hover {
+            background-color: #5568d3;
+        }
+        .command-form button.danger {
+            background-color: #f44336;
+        }
+        .command-form button.danger:hover {
+            background-color: #da190b;
+        }
+        .command-form button.success {
+            background-color: #4caf50;
+        }
+        .command-form button.success:hover {
+            background-color: #45a049;
+        }
+        .result-message {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .result-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .result-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .action-buttons button {
+            padding: 5px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .btn-edit {
+            background-color: #ff9800;
+            color: white;
+        }
+        .btn-delete {
+            background-color: #f44336;
+            color: white;
+        }
+        .btn-view {
+            background-color: #2196f3;
+            color: white;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #000;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .search-box button {
+            padding: 10px 20px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .refresh-btn {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .refresh-btn:hover {
+            background-color: #45a049;
+        }
+        .requirements-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .requirements-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .requirements-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .requirement-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .requirement-item h4 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        .requirement-item ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .requirement-item code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .auth-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .auth-authenticated {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .auth-unauthenticated {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .architecture-section {
+            background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .architecture-section h2 {
+            margin-top: 0;
+            color: #0277bd;
+        }
+        .architecture-image {
+            width: 100%;
+            max-width: 1200px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .justification-list {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        .justification-list li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .justification-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+        .justification-item h4 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        .data-model-section {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .data-model-section h2 {
+            margin-top: 0;
+            color: #e65100;
+        }
+        .table-schema {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .table-schema h3 {
+            margin-top: 0;
+            color: #e65100;
+            border-bottom: 2px solid #ff9800;
+            padding-bottom: 10px;
+        }
+        .table-schema pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #ff9800;
+        }
+        .table-schema code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .field-list {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .field-list li {
+            margin: 5px 0;
+        }
+        .field-name {
+            font-weight: bold;
+            color: #e65100;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🚀 Dashboard de Pruebas de Inventario Distribuido</h1>
+        <p>Arquitectura: CQRS + Event-Driven (EDA)</p>
+    </div>
+
+    <div class="section architecture-section">
+        <h2>🏗️ Justificación de la Arquitectura</h2>
+        
+        <h3>📊 Diagrama de Arquitectura</h3>
+        <img src="arqDistribuida.png" alt="Arquitectura Distribuida CQRS + EDA" class="architecture-image">
+        
+        <h3>🎯 Problemas Resueltos</h3>
+        <div class="justification-item">
+            <h4>1. Inconsistencias de Stock</h4>
+            <p><strong>Problema:</strong> Las actualizaciones de stock se sincronizaban cada 15 minutos, generando ventanas de inconsistencia.</p>
+            <p><strong>Solución:</strong> Con CQRS + EDA, los cambios se propagan en tiempo real mediante eventos, eliminando las ventanas de inconsistencia.</p>
+        </div>
+        
+        <div class="justification-item">
+            <h4>2. Alta Latencia en Actualizaciones</h4>
+            <p><strong>Problema:</strong> Los cambios de stock no se reflejaban en tiempo real, degradando la experiencia del usuario.</p>
+            <p><strong>Solución:</strong> El Command Service responde inmediatamente (202 Accepted) mientras el procesamiento es asíncrono, y el Query Service optimiza las lecturas con cache.</p>
+        </div>
+        
+        <div class="justification-item">
+            <h4>3. Escalabilidad Limitada</h4>
+            <p><strong>Problema:</strong> El backend monolítico no podía escalar independientemente para lectura y escritura.</p>
+            <p><strong>Solución:</strong> Separación de Command Service (escritura) y Query Service (lectura) permite escalar cada uno según su carga específica.</p>
+        </div>
+        
+        <div class="justification-item">
+            <h4>4. Acoplamiento Fuerte</h4>
+            <p><strong>Problema:</strong> Todas las operaciones estaban acopladas en un solo servicio, dificultando el mantenimiento.</p>
+            <p><strong>Solución:</strong> Arquitectura desacoplada mediante eventos, permitiendo evolución independiente de cada componente.</p>
+        </div>
+        
+        <div class="justification-item">
+            <h4>5. Puntos Únicos de Falla</h4>
+            <p><strong>Problema:</strong> Si el backend monolítico fallaba, todo el sistema se detenía.</p>
+            <p><strong>Solución:</strong> Servicios independientes con redundancia y fallback, mejorando la disponibilidad del sistema.</p>
+        </div>
+        
+        <h3>✨ Principios Arquitectónicos</h3>
+        <ul class="justification-list">
+            <li><strong>Separación de Responsabilidades:</strong> Comandos (escritura) y Queries (lectura) en servicios independientes</li>
+            <li><strong>Event-Driven:</strong> Comunicación asíncrona mediante eventos (Kafka)</li>
+            <li><strong>Single Writer Principle:</strong> Solo el Listener Service escribe en la fuente de verdad (SQLite)</li>
+            <li><strong>Optimistic Locking:</strong> Control de concurrencia sin bloqueos pesimistas mediante campo `version`</li>
+            <li><strong>Cache-First:</strong> Optimización de lecturas mediante cache distribuido (Redis)</li>
+        </ul>
+        
+        <h3>🔄 Flujo de Operación</h3>
+        <ol class="justification-list">
+            <li><strong>Cliente</strong> → POST /api/v1/inventory/items (Command Service)</li>
+            <li><strong>Command Service</strong> → Valida y publica evento en Kafka</li>
+            <li><strong>Command Service</strong> → Retorna 202 Accepted (asíncrono)</li>
+            <li><strong>Listener Service</strong> → Consume evento de Kafka</li>
+            <li><strong>Listener Service</strong> → Actualiza SQLite (Single Writer)</li>
+            <li><strong>Cliente</strong> → GET /api/v1/inventory/items (Query Service)</li>
+            <li><strong>Query Service</strong> → Lee desde Redis Cache o Read Model</li>
+            <li><strong>Query Service</strong> → Retorna datos (ultra baja latencia)</li>
+        </ol>
+    </div>
+
+    <div class="section data-model-section">
+        <h2>🗄️ Modelo de Datos SQLite</h2>
+        <p>La base de datos SQLite actúa como <strong>única fuente de verdad</strong> (Single Source of Truth) para el inventario centralizado. Solo el <strong>Listener Service</strong> escribe en esta base de datos, siguiendo el principio de Single Writer.</p>
+        
+        <div class="table-schema">
+            <h3>📦 Tabla: <code>inventory_items</code></h3>
+            <p>Inventario centralizado (Single Source of Truth).</p>
+            <pre><code>CREATE TABLE inventory_items (
+    id TEXT PRIMARY KEY,
+    sku TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    reserved INTEGER NOT NULL DEFAULT 0,
+    available INTEGER NOT NULL DEFAULT 0,
+    version INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK(quantity >= 0),
+    CHECK(reserved >= 0),
+    CHECK(available >= 0),
+    CHECK(reserved <= quantity),
+    CHECK(available = quantity - reserved)
+);</code></pre>
+            <h4>Campos:</h4>
+            <ul class="field-list">
+                <li><span class="field-name">id</span>: Identificador único del item (UUID)</li>
+                <li><span class="field-name">sku</span>: Stock Keeping Unit (único)</li>
+                <li><span class="field-name">name</span>: Nombre del item</li>
+                <li><span class="field-name">description</span>: Descripción del item</li>
+                <li><span class="field-name">quantity</span>: Cantidad total en inventario</li>
+                <li><span class="field-name">reserved</span>: Cantidad reservada por tiendas</li>
+                <li><span class="field-name">available</span>: Cantidad disponible (calculada: quantity - reserved)</li>
+                <li><span class="field-name">version</span>: Versión para optimistic locking</li>
+                <li><span class="field-name">created_at</span>: Fecha de creación (ISO 8601)</li>
+                <li><span class="field-name">updated_at</span>: Fecha de última actualización (ISO 8601)</li>
+            </ul>
+            <h4>Constraints:</h4>
+            <ul class="field-list">
+                <li><code>quantity >= 0</code>: La cantidad no puede ser negativa</li>
+                <li><code>reserved >= 0</code>: Las reservas no pueden ser negativas</li>
+                <li><code>available >= 0</code>: Lo disponible no puede ser negativo</li>
+                <li><code>reserved <= quantity</code>: Las reservas no pueden exceder la cantidad total</li>
+                <li><code>available = quantity - reserved</code>: Lo disponible debe ser consistente</li>
+            </ul>
+            <h4>Índices:</h4>
+            <ul class="field-list">
+                <li><code>idx_inventory_items_sku</code>: Índice único en <code>sku</code></li>
+                <li><code>idx_inventory_items_version</code>: Índice en <code>version</code> para optimistic locking</li>
+            </ul>
+        </div>
+        
+        <div class="table-schema">
+            <h3>🏪 Tabla: <code>stores</code></h3>
+            <p>Información sobre las tiendas físicas.</p>
+            <pre><code>CREATE TABLE stores (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    location TEXT,
+    code TEXT UNIQUE NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK(active IN (0, 1))
+);</code></pre>
+            <h4>Campos:</h4>
+            <ul class="field-list">
+                <li><span class="field-name">id</span>: Identificador único de la tienda (UUID)</li>
+                <li><span class="field-name">name</span>: Nombre de la tienda</li>
+                <li><span class="field-name">location</span>: Ubicación de la tienda</li>
+                <li><span class="field-name">code</span>: Código único de la tienda (para identificación rápida)</li>
+                <li><span class="field-name">active</span>: Estado activo/inactivo (1 = activo, 0 = inactivo)</li>
+                <li><span class="field-name">created_at</span>: Fecha de creación (ISO 8601)</li>
+                <li><span class="field-name">updated_at</span>: Fecha de última actualización (ISO 8601)</li>
+            </ul>
+        </div>
+        
+        <div class="table-schema">
+            <h3>📋 Tabla: <code>store_reservations</code></h3>
+            <p>Seguimiento de reservas por tienda (para auditoría y tracking).</p>
+            <pre><code>CREATE TABLE store_reservations (
+    id TEXT PRIMARY KEY,
+    store_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
+    reserved_at TEXT NOT NULL,
+    released_at TEXT,
+    expires_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE CASCADE,
+    CHECK(quantity > 0),
+    CHECK(status IN ('active', 'released', 'expired', 'fulfilled'))
+);</code></pre>
+            <h4>Campos:</h4>
+            <ul class="field-list">
+                <li><span class="field-name">id</span>: Identificador único de la reserva (UUID)</li>
+                <li><span class="field-name">store_id</span>: ID de la tienda (FK a <code>stores</code>)</li>
+                <li><span class="field-name">item_id</span>: ID del item (FK a <code>inventory_items</code>)</li>
+                <li><span class="field-name">quantity</span>: Cantidad reservada</li>
+                <li><span class="field-name">status</span>: Estado de la reserva (<code>active</code>, <code>released</code>, <code>expired</code>, <code>fulfilled</code>)</li>
+                <li><span class="field-name">reserved_at</span>: Fecha/hora de la reserva (ISO 8601)</li>
+                <li><span class="field-name">released_at</span>: Fecha/hora de liberación (opcional)</li>
+                <li><span class="field-name">expires_at</span>: Fecha/hora de expiración (opcional)</li>
+                <li><span class="field-name">created_at</span>: Fecha de creación (ISO 8601)</li>
+                <li><span class="field-name">updated_at</span>: Fecha de última actualización (ISO 8601)</li>
+            </ul>
+        </div>
+        
+        <h3>🎯 Ventajas del Diseño</h3>
+        <ul class="justification-list">
+            <li><strong>Single Source of Truth:</strong> Solo una base de datos centralizada</li>
+            <li><strong>Consistencia:</strong> Optimistic locking previene conflictos</li>
+            <li><strong>Auditoría:</strong> Tabla <code>store_reservations</code> permite tracking completo</li>
+            <li><strong>Escalabilidad:</strong> SQLite es liviano y eficiente para este caso de uso</li>
+            <li><strong>Integridad:</strong> Foreign keys y constraints garantizan integridad de datos</li>
+            <li><strong>Performance:</strong> Índices optimizados para consultas frecuentes</li>
+        </ul>
+    </div>
+
+    <div class="section requirements-section">
+        <h2>📋 Requisitos del Sistema</h2>
+        <div class="requirements-list">
+            <div class="requirement-item">
+                <h4>🪟 Windows</h4>
+                <ul>
+                    <li>Windows 10 o superior (64-bit)</li>
+                    <li>Docker Desktop para Windows</li>
+                    <li>Git para Windows</li>
+                    <li>Navegador web moderno (Chrome, Firefox, Edge)</li>
+                </ul>
+            </div>
+            <div class="requirement-item">
+                <h4>🐧 Linux</h4>
+                <ul>
+                    <li>Ubuntu 20.04+ / Debian 11+ / RHEL 8+</li>
+                    <li>Docker Engine 20.10+</li>
+                    <li>Docker Compose 2.0+</li>
+                    <li>Git instalado</li>
+                    <li>Navegador web moderno</li>
+                </ul>
+            </div>
+            <div class="requirement-item">
+                <h4>🍎 macOS</h4>
+                <ul>
+                    <li>macOS 10.15 (Catalina) o superior</li>
+                    <li>Docker Desktop para Mac</li>
+                    <li>Git (incluido en Xcode Command Line Tools)</li>
+                    <li>Navegador web moderno (Safari, Chrome, Firefox)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">🔧 Dependencias para Golang</h3>
+        <div class="requirement-item">
+            <h4>Instalación de Go</h4>
+            <ul>
+                <li><strong>Versión requerida:</strong> Go 1.20 o superior</li>
+                <li><strong>Descarga:</strong> <a href="https://golang.org/dl/" target="_blank">https://golang.org/dl/</a></li>
+            </ul>
+            
+            <h4 style="margin-top: 20px;">Verificación de Instalación</h4>
+            <ul>
+                <li>Windows: <code>go version</code> en PowerShell o CMD</li>
+                <li>Linux/Mac: <code>go version</code> en terminal</li>
+            </ul>
+            
+            <h4 style="margin-top: 20px;">Variables de Entorno (Linux/Mac)</h4>
+            <ul>
+                <li>Agregar a <code>~/.bashrc</code> o <code>~/.zshrc</code>:</li>
+                <li><code>export GOPATH=$HOME/go</code></li>
+                <li><code>export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin</code></li>
+            </ul>
+            
+            <h4 style="margin-top: 20px;">Variables de Entorno (Windows)</h4>
+            <ul>
+                <li>Agregar <code>C:\Program Files\Go\bin</code> al PATH del sistema</li>
+                <li>Configurar <code>GOPATH</code> (ej: <code>C:\Users\Usuario\go</code>)</li>
+            </ul>
+            
+            <h4 style="margin-top: 20px;">Dependencias del Proyecto</h4>
+            <ul>
+                <li>Las dependencias se instalan automáticamente con <code>go mod download</code></li>
+                <li>Ejecutar en cada servicio: <code>cd prototipes/[service-name] && go mod download</code></li>
+            </ul>
+            
+            <h4 style="margin-top: 20px;">⚠️ Importante: Servidor HTTP Local</h4>
+            <p><strong>Este dashboard NO puede abrirse directamente desde el sistema de archivos (file://) debido a restricciones de CORS.</strong></p>
+            <p><strong>Recomendado: Usa el servidor HTTP en Go incluido en este proyecto:</strong></p>
+            <ul>
+                <li><strong>Go (Recomendado):</strong> 
+                    <ul>
+                        <li><code>cd html && go run server.go</code></li>
+                        <li>O usa el script: <code>./start-server.sh</code> (Linux/Mac) o <code>start-server.bat</code> (Windows)</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Alternativas:</strong></p>
+            <ul>
+                <li><strong>Python:</strong> <code>cd html && python -m http.server 8000</code></li>
+                <li><strong>Node.js:</strong> <code>cd html && npx http-server -p 8000</code></li>
+                <li><strong>PHP:</strong> <code>cd html && php -S localhost:8000</code></li>
+            </ul>
+            <p>Luego abre: <code>http://localhost:8000/index.html</code> en tu navegador.</p>
+        </div>
+    </div>
+
+    <div class="section" id="docs-status">
+        <h2>🔗 Estado y Documentación de Servicios</h2>
+        <div id="cors-warning" style="display: none; background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+            <h3 style="margin-top: 0; color: #856404;">⚠️ Importante: Error de CORS Detectado</h3>
+            <p><strong>El navegador está bloqueando las peticiones porque el HTML se abrió directamente desde el sistema de archivos (file://).</strong></p>
+            <p><strong>Recomendado: Usa el servidor HTTP en Go incluido en este proyecto:</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+                <li><strong>Go (Recomendado):</strong> 
+                    <ul>
+                        <li><code>cd html && go run server.go</code></li>
+                        <li>O usa el script: <code>./start-server.sh</code> (Linux/Mac) o <code>start-server.bat</code> (Windows)</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Alternativas:</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+                <li><strong>Python:</strong> <code>cd html && python -m http.server 8000</code></li>
+                <li><strong>Node.js:</strong> <code>cd html && npx http-server -p 8000</code></li>
+                <li><strong>PHP:</strong> <code>cd html && php -S localhost:8000</code></li>
+            </ul>
+            <p>Luego abre: <code>http://localhost:8000/index.html</code> en tu navegador.</p>
+            <p><strong>Ubicación del archivo:</strong> <code>html/index.html</code></p>
+        </div>
+        <div id="auth-status-container"></div>
+        <div class="service-status" id="service-status">
+            <div class="service-status-item status-checking">
+                Command Service (8080): Verificando...
+            </div>
+            <div class="service-status-item status-checking">
+                Query Service (8081): Verificando...
+            </div>
+        </div>
+        <div class="status-link">
+            <p><strong>Documentación de Servicios:</strong></p>
+            <a href="http://localhost:8080/swagger/index.html" target="_blank" style="margin-right: 15px;">📄 Command Service Swagger (8080)</a>
+            <a href="http://localhost:8081/swagger/index.html" target="_blank" style="margin-right: 15px;">📄 Query Service Swagger (8081)</a>
+            <a href="http://localhost:8082/swagger/index.html" target="_blank" style="margin-right: 15px;">📄 Listener Service Swagger (8082)</a>
+        </div>
+        <div class="status-link">
+            <p><strong>Logs del Sistema (Levantamiento):</strong></p>
+            <div class="log-box" id="system-logs">
+                [Inicializando sistema...]
+            </div>
+        </div>
+    </div>
+
+    <div class="section" id="query-panel">
+        <h2>🔎 Inventario Actual (Query Service)</h2>
+        <button class="refresh-btn" onclick="fetchInventory()">🔄 Actualizar Inventario</button>
+        
+        <div class="search-box">
+        <input type="text" id="sku-search" placeholder="Buscar por SKU (ej: ITEM-001)">
+            <button onclick="searchBySku()">🔍 Buscar</button>
+        </div>
+        
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>SKU</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Stock Disponible</th>
+                    <th>Stock Reservado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="inventory-list">
+                <tr><td colspan="7" style="text-align: center;">Cargando inventario...</td></tr>
+                </tbody>
+        </table>
+    </div>
+
+    <div class="section" id="command-panel">
+        <h2>✍️ Interacciones con el Inventario (Command Service)</h2>
+        <div id="command-result"></div>
+
+        <h3>1. Crear Nuevo Item</h3>
+        <div class="command-form">
+            <input type="text" id="create-sku" placeholder="SKU (ej: ITEM-001)">
+            <input type="text" id="create-name" placeholder="Nombre del Producto">
+            <input type="text" id="create-description" placeholder="Descripción (opcional)">
+            <input type="number" id="create-quantity" placeholder="Cantidad Inicial" min="0">
+            <button class="success" onclick="createItem()">➕ Crear Item</button>
+        </div>
+        
+        <h3>2. Actualizar Item</h3>
+        <div class="command-form">
+            <input type="text" id="update-id" placeholder="ID del Item">
+            <input type="text" id="update-name" placeholder="Nuevo Nombre">
+            <input type="text" id="update-description" placeholder="Nueva Descripción">
+            <button onclick="updateItem()">✏️ Actualizar Item</button>
+        </div>
+
+        <h3>3. Eliminar Item</h3>
+        <div class="command-form">
+            <input type="text" id="delete-id" placeholder="ID del Item">
+            <button class="danger" onclick="deleteItem()">🗑️ Eliminar Item</button>
+        </div>
+
+        <h3>4. Ajustar Cantidad de Stock</h3>
+        <div class="command-form">
+            <input type="text" id="adjust-id" placeholder="ID del Item">
+            <input type="number" id="adjust-quantity" placeholder="Cantidad (+/-)">
+            <button onclick="adjustStock()">📊 Ajustar Stock</button>
+        </div>
+
+        <h3>5. Reservar o Liberar Stock</h3>
+        <div class="command-form">
+            <input type="text" id="reserve-id" placeholder="ID del Item">
+            <input type="number" id="reserve-quantity" placeholder="Cantidad a Reservar" min="1">
+            <button onclick="reserveStock()">🔒 Reservar</button>
+            <input type="number" id="release-quantity" placeholder="Cantidad a Liberar" min="1">
+            <button onclick="releaseStock()">🔓 Liberar</button>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Item -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Editar Item</h2>
+            <div class="form-group">
+                <label>ID:</label>
+                <input type="text" id="edit-id" readonly>
+            </div>
+            <div class="form-group">
+                <label>SKU:</label>
+                <input type="text" id="edit-sku" readonly>
+            </div>
+            <div class="form-group">
+                <label>Nombre:</label>
+                <input type="text" id="edit-name">
+            </div>
+            <div class="form-group">
+                <label>Descripción:</label>
+                <textarea id="edit-description" rows="3"></textarea>
+            </div>
+            <button class="success" onclick="saveEditItem()" style="width: 100%; padding: 10px; margin-top: 10px;">💾 Guardar Cambios</button>
+        </div>
+    </div>
+
+    <script>
+        // Detectar si estamos usando el servidor proxy Go
+        const isUsingProxy = window.location.hostname === 'localhost' && (window.location.port === '8000' || window.location.port === '');
+        
+        // URLs de los servicios
+        // Si usamos el proxy (puerto 8000), todas las peticiones pasan por el proxy
+        // El proxy redirige automáticamente:
+        // - GET /api/v1/inventory/* -> Query Service (8081)
+        // - POST/PUT/DELETE /api/v1/inventory/* -> Command Service (8080)
+        // Si no usamos el proxy, vamos directo a los servicios
+        const QUERY_API = isUsingProxy ? '' : 'http://localhost:8081';
+        const COMMAND_API = isUsingProxy ? '' : 'http://localhost:8080';
+        
+        let authToken = null;
+        let tokenExpiry = null;
+
+        // --- Autenticación JWT ---
+
+        async function login(service = 'command') {
+            const apiUrl = service === 'command' ? COMMAND_API : QUERY_API;
+            const serviceName = service === 'command' ? 'Command Service' : 'Query Service';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP ${response.status}: ${errorData.message || 'Error de autenticación'}`);
+                }
+
+                const data = await response.json();
+                
+                // Obtener el token
+                const token = data.token;
+                
+                if (!token) {
+                    throw new Error('Token no recibido en la respuesta');
+                }
+                
+                // Si es el primer login (command service), guardar el token
+                if (service === 'command') {
+                    authToken = token;
+                    
+                    // Calcular expiración usando expires_in (en segundos) o expires_at
+                    if (data.expires_at) {
+                        // Usar expires_at si está disponible
+                        tokenExpiry = new Date(data.expires_at).getTime();
+                    } else if (data.expires_in) {
+                        // Usar expires_in (en segundos) y convertir a milisegundos
+                        tokenExpiry = Date.now() + (data.expires_in * 1000);
+                    } else {
+                        // Fallback: usar 600 segundos (10 minutos) por defecto
+                        tokenExpiry = Date.now() + (600 * 1000);
+                    }
+                    
+                    updateAuthStatus(true);
+                    addLog(`✅ Autenticación exitosa con ${serviceName}. Token JWT obtenido. Expira en ${data.expires_in || 600} segundos.`);
+                } else {
+                    // Para query service, también guardamos el token si es necesario
+                    // Por ahora, usamos el mismo token del command service
+                    addLog(`✅ Autenticación exitosa con ${serviceName}.`);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error(`Error al autenticar con ${serviceName}:`, error);
+                
+                // Detectar si es un error de CORS
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.name === 'TypeError') {
+                    // Mostrar warning de CORS
+                    const corsWarning = document.getElementById('cors-warning');
+                    if (corsWarning) {
+                        corsWarning.style.display = 'block';
+                    }
+                    
+                    const corsError = `
+⚠️ ERROR DE CORS: El navegador está bloqueando las peticiones.
+Esto ocurre cuando abres el HTML directamente desde el sistema de archivos (file://).
+
+SOLUCIÓN RECOMENDADA (Go):
+1. Usa el servidor HTTP en Go incluido en este proyecto:
+   cd html && go run server.go
+   
+   O usa el script:
+   - Linux/Mac: ./start-server.sh
+   - Windows: start-server.bat
+
+2. Luego abre: http://localhost:8000/index.html
+
+ALTERNATIVAS:
+- Python: cd html && python -m http.server 8000
+- Node.js: cd html && npx http-server -p 8000
+- PHP: cd html && php -S localhost:8000
+
+Verifica que los servicios estén corriendo en:
+- Command Service: ${COMMAND_API}
+- Query Service: ${QUERY_API}
+                    `;
+                    addLog(corsError);
+                    showResult('⚠️ Error de CORS: Usa un servidor HTTP local para servir el HTML. Ver advertencia arriba para más detalles.', 'error');
+                } else {
+                    addLog(`❌ Error de autenticación con ${serviceName}: ${error.message}`);
+                }
+                
+                if (service === 'command') {
+                    authToken = null;
+                    tokenExpiry = null;
+                    updateAuthStatus(false);
+                }
+                
+                return false;
+            }
+        }
+
+        function isTokenExpired() {
+            if (!authToken || !tokenExpiry) {
+                return true;
+            }
+            // Renovar token 1 minuto antes de que expire
+            return Date.now() >= (tokenExpiry - 60000);
+        }
+
+        async function ensureAuthenticated() {
+            if (isTokenExpired()) {
+                addLog('🔄 Token expirado o no disponible. Re-autenticando...');
+                return await login();
+            }
+            return true;
+        }
+
+        function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json',
+                'accept': 'application/json'
+            };
+            
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            return headers;
+        }
+
+        function updateAuthStatus(isAuthenticated) {
+            const authContainer = document.getElementById('auth-status-container');
+            if (isAuthenticated && authToken) {
+                const timeRemaining = Math.max(0, Math.floor((tokenExpiry - Date.now()) / 1000));
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                authContainer.innerHTML = `
+                    <div class="auth-status auth-authenticated">
+                        ✅ Autenticado | Token válido por: ${minutes}m ${seconds}s
+                    </div>
+                `;
+            } else {
+                authContainer.innerHTML = `
+                    <div class="auth-status auth-unauthenticated">
+                        ❌ No autenticado | Intentando autenticar...
+                    </div>
+                `;
+            }
+        }
+
+        // Actualizar contador de tiempo restante cada segundo
+        setInterval(() => {
+            if (authToken && tokenExpiry) {
+                updateAuthStatus(true);
+            }
+        }, 1000);
+
+        // --- Verificación de Estado de Servicios ---
+
+        async function checkServiceStatus() {
+            // Si estamos usando el proxy, usar rutas específicas para cada servicio
+            const commandHealthUrl = isUsingProxy ? '/api/v1/health/command' : `${COMMAND_API}/api/v1/health`;
+            const queryHealthUrl = isUsingProxy ? '/api/v1/health/query' : `${QUERY_API}/api/v1/health`;
+            
+            const services = [
+                { name: 'Command Service', url: commandHealthUrl, port: 8080 },
+                { name: 'Query Service', url: queryHealthUrl, port: 8081 }
+            ];
+
+            const statusContainer = document.getElementById('service-status');
+            statusContainer.innerHTML = '';
+
+            for (const service of services) {
+                const statusItem = document.createElement('div');
+                statusItem.className = 'service-status-item status-checking';
+                statusItem.id = `status-${service.port}`;
+                statusItem.textContent = `${service.name} (${service.port}): Verificando...`;
+                statusContainer.appendChild(statusItem);
+
+                try {
+                    const response = await fetch(service.url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        statusItem.className = 'service-status-item status-active';
+                        statusItem.textContent = `${service.name} (${service.port}): ✅ Activo`;
+                        addLog(`✅ ${service.name} (${service.port}) está activo`);
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    // Detectar si es un error de CORS
+                    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.name === 'TypeError') {
+                        // Mostrar warning de CORS
+                        const corsWarning = document.getElementById('cors-warning');
+                        if (corsWarning) {
+                            corsWarning.style.display = 'block';
+                        }
+                        
+                        statusItem.className = 'service-status-item status-inactive';
+                        statusItem.textContent = `${service.name} (${service.port}): ⚠️ Error CORS`;
+                        addLog(`⚠️ ${service.name} (${service.port}): Error de CORS - Usa un servidor HTTP local`);
+                    } else {
+                        statusItem.className = 'service-status-item status-inactive';
+                        statusItem.textContent = `${service.name} (${service.port}): ❌ Inactivo`;
+                        addLog(`❌ ${service.name} (${service.port}) no está disponible: ${error.message}`);
+                    }
+                }
+            }
+        }
+
+        function addLog(message) {
+            const logBox = document.getElementById('system-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logBox.textContent += `\n[${timestamp}] ${message}`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // --- Funciones de LECTURA (Query Service) ---
+
+        async function fetchInventory() {
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${QUERY_API}/api/v1/inventory/items?page=1&page_size=100`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return fetchInventory(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const inventoryList = document.getElementById('inventory-list');
+                inventoryList.innerHTML = '';
+
+                let items = [];
+                if (data.items && Array.isArray(data.items)) {
+                    items = data.items;
+                } else if (Array.isArray(data)) {
+                    items = data;
+                } else if (data.data && Array.isArray(data.data)) {
+                    items = data.data;
+                }
+
+                if (items.length === 0) {
+                    inventoryList.innerHTML = '<tr><td colspan="7" style="text-align: center;">No se encontraron items en el inventario.</td></tr>';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const row = inventoryList.insertRow();
+                    row.insertCell().textContent = item.id || item.ID || 'N/A';
+                    row.insertCell().textContent = item.sku || item.SKU || 'N/A';
+                    row.insertCell().textContent = item.name || item.Name || 'N/A';
+                    row.insertCell().textContent = item.description || item.Description || '-';
+                    
+                    // Mapeo de campos: el servicio retorna 'available' y 'reserved'
+                    const availableStock = item.available !== undefined ? item.available : 
+                                         (item.availableStock !== undefined ? item.availableStock : 
+                                         (item.available_stock !== undefined ? item.available_stock : 
+                                         (item.quantity !== undefined ? item.quantity : 0)));
+                    const reservedStock = item.reserved !== undefined ? item.reserved : 
+                                         (item.reservedStock !== undefined ? item.reservedStock : 
+                                         (item.reserved_stock !== undefined ? item.reserved_stock : 
+                                         (item.reserved_quantity !== undefined ? item.reserved_quantity : 0)));
+                    
+                    row.insertCell().textContent = availableStock;
+                    row.insertCell().textContent = reservedStock;
+                    
+                    const actionsCell = row.insertCell();
+                    actionsCell.className = 'action-buttons';
+                    
+                    const viewBtn = document.createElement('button');
+                    viewBtn.className = 'btn-view';
+                    viewBtn.textContent = '👁️ Ver';
+                    viewBtn.onclick = () => viewItemDetails(item.id || item.ID);
+                    actionsCell.appendChild(viewBtn);
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn-edit';
+                    editBtn.textContent = '✏️ Editar';
+                    editBtn.onclick = () => openEditModal(item);
+                    actionsCell.appendChild(editBtn);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-delete';
+                    deleteBtn.textContent = '🗑️ Eliminar';
+                    deleteBtn.onclick = () => deleteItemById(item.id || item.ID);
+                    actionsCell.appendChild(deleteBtn);
+                });
+
+                addLog(`✅ Inventario cargado: ${items.length} items`);
+            } catch (error) {
+                console.error("Error al obtener inventario:", error);
+                document.getElementById('inventory-list').innerHTML = 
+                    '<tr><td colspan="7" style="text-align: center; color: red;">❌ Error de conexión con Query Service. Verifique que el servicio esté activo.</td></tr>';
+                addLog(`❌ Error al cargar inventario: ${error.message}`);
+            }
+        }
+
+        async function searchBySku() {
+            const sku = document.getElementById('sku-search').value.trim();
+            if (!sku) {
+                alert("Por favor ingrese un SKU para buscar.");
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${QUERY_API}/api/v1/inventory/items/sku/${sku}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return searchBySku(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showResult('Item no encontrado con el SKU proporcionado.', 'error');
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const item = await response.json();
+                const inventoryList = document.getElementById('inventory-list');
+                inventoryList.innerHTML = '';
+
+                const row = inventoryList.insertRow();
+                row.insertCell().textContent = item.id || item.ID || 'N/A';
+                row.insertCell().textContent = item.sku || item.SKU || 'N/A';
+                row.insertCell().textContent = item.name || item.Name || 'N/A';
+                row.insertCell().textContent = item.description || item.Description || '-';
+                
+                // Mapeo de campos: el servicio retorna 'available' y 'reserved'
+                const availableStock = item.available !== undefined ? item.available : 
+                                     (item.availableStock !== undefined ? item.availableStock : 
+                                     (item.available_stock !== undefined ? item.available_stock : 
+                                     (item.quantity !== undefined ? item.quantity : 0)));
+                const reservedStock = item.reserved !== undefined ? item.reserved : 
+                                     (item.reservedStock !== undefined ? item.reservedStock : 
+                                     (item.reserved_stock !== undefined ? item.reserved_stock : 
+                                     (item.reserved_quantity !== undefined ? item.reserved_quantity : 0)));
+                
+                row.insertCell().textContent = availableStock;
+                row.insertCell().textContent = reservedStock;
+                
+                const actionsCell = row.insertCell();
+                actionsCell.className = 'action-buttons';
+                
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'btn-view';
+                viewBtn.textContent = '👁️ Ver';
+                viewBtn.onclick = () => viewItemDetails(item.id || item.ID);
+                actionsCell.appendChild(viewBtn);
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-edit';
+                editBtn.textContent = '✏️ Editar';
+                editBtn.onclick = () => openEditModal(item);
+                actionsCell.appendChild(editBtn);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-delete';
+                deleteBtn.textContent = '🗑️ Eliminar';
+                deleteBtn.onclick = () => deleteItemById(item.id || item.ID);
+                actionsCell.appendChild(deleteBtn);
+
+                addLog(`✅ Item encontrado: ${sku}`);
+            } catch (error) {
+                console.error("Error al buscar por SKU:", error);
+                showResult('Error al buscar el item. Verifique que el Query Service esté activo.', 'error');
+                addLog(`❌ Error al buscar por SKU: ${error.message}`);
+            }
+        }
+
+        async function viewItemDetails(itemId) {
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${QUERY_API}/api/v1/inventory/items/${itemId}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return viewItemDetails(itemId); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const item = await response.json();
+                const details = `
+ID: ${item.id || item.ID}
+SKU: ${item.sku || item.SKU}
+Nombre: ${item.name || item.Name}
+Descripción: ${item.description || item.Description || 'N/A'}
+Stock Disponible: ${item.available !== undefined ? item.available : (item.availableStock !== undefined ? item.availableStock : (item.quantity !== undefined ? item.quantity : 0))}
+Stock Reservado: ${item.reserved !== undefined ? item.reserved : (item.reservedStock !== undefined ? item.reservedStock : 0)}
+                `;
+                alert(details);
+            } catch (error) {
+                showResult('Error al obtener detalles del item.', 'error');
+            }
+        }
+
+        // --- Funciones de ESCRITURA (Command Service) ---
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('command-result');
+            resultDiv.className = `result-message result-${type}`;
+            resultDiv.textContent = message;
+            setTimeout(() => {
+                resultDiv.textContent = '';
+                resultDiv.className = '';
+            }, 5000);
+        }
+
+        async function createItem() {
+            const sku = document.getElementById('create-sku').value.trim();
+            const name = document.getElementById('create-name').value.trim();
+            const description = document.getElementById('create-description').value.trim();
+            const quantity = parseInt(document.getElementById('create-quantity').value);
+
+            if (!sku || !name || isNaN(quantity) || quantity < 0) {
+                showResult('Por favor complete todos los campos requeridos (SKU, Nombre, Cantidad >= 0).', 'error');
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        sku: sku,
+                        name: name,
+                        description: description || '',
+                        quantity: quantity
+                    })
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        // Reintentar con nuevo token
+                        return createItem();
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                const data = await response.json();
+
+                if (response.status === 201 || response.status === 200) {
+                    showResult(`✅ Item creado exitosamente. ID: ${data.id || data.ID || 'N/A'}`, 'success');
+                    addLog(`✅ Item creado: ${sku} - ${name}`);
+                    
+                    // Limpiar formulario
+                    document.getElementById('create-sku').value = '';
+                    document.getElementById('create-name').value = '';
+                    document.getElementById('create-description').value = '';
+                    document.getElementById('create-quantity').value = '';
+                    
+                    // Refrescar inventario después de unos segundos
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                    addLog(`❌ Error al crear item: ${data.error || data.message}`);
+                }
+            } catch (error) {
+                console.error("Error al crear item:", error);
+                showResult('❌ Error de conexión con Command Service. Verifique que el servicio esté activo.', 'error');
+                addLog(`❌ Error de conexión al crear item: ${error.message}`);
+            }
+        }
+
+        async function updateItem() {
+            const id = document.getElementById('update-id').value.trim();
+            const name = document.getElementById('update-name').value.trim();
+            const description = document.getElementById('update-description').value.trim();
+
+            if (!id || !name) {
+                showResult('Por favor ingrese el ID y el nuevo nombre del item.', 'error');
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items/${id}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        name: name,
+                        description: description || ''
+                    })
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return updateItem(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                const data = await response.json();
+
+                if (response.status === 200 || response.status === 202) {
+                    showResult(`✅ Item actualizado exitosamente.`, 'success');
+                    addLog(`✅ Item actualizado: ${id}`);
+                    
+                    // Limpiar formulario
+                    document.getElementById('update-id').value = '';
+                    document.getElementById('update-name').value = '';
+                    document.getElementById('update-description').value = '';
+                    
+                    // Refrescar inventario
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                    addLog(`❌ Error al actualizar item: ${data.error || data.message}`);
+                }
+            } catch (error) {
+                console.error("Error al actualizar item:", error);
+                showResult('❌ Error de conexión con Command Service.', 'error');
+                addLog(`❌ Error de conexión al actualizar item: ${error.message}`);
+            }
+        }
+
+        async function deleteItem() {
+            const id = document.getElementById('delete-id').value.trim();
+            if (!id) {
+                showResult('Por favor ingrese el ID del item a eliminar.', 'error');
+                return;
+            }
+
+            if (!confirm(`¿Está seguro de que desea eliminar el item con ID: ${id}?`)) {
+                return;
+            }
+
+            await deleteItemById(id);
+            document.getElementById('delete-id').value = '';
+        }
+
+        async function deleteItemById(id) {
+            if (!confirm(`¿Está seguro de que desea eliminar el item con ID: ${id}?`)) {
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return deleteItemById(id); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                if (response.status === 200 || response.status === 202 || response.status === 204) {
+                    showResult(`✅ Item eliminado exitosamente.`, 'success');
+                    addLog(`✅ Item eliminado: ${id}`);
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    const data = await response.json();
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                    addLog(`❌ Error al eliminar item: ${data.error || data.message}`);
+                }
+            } catch (error) {
+                console.error("Error al eliminar item:", error);
+                showResult('❌ Error de conexión con Command Service.', 'error');
+                addLog(`❌ Error de conexión al eliminar item: ${error.message}`);
+            }
+        }
+
+        async function adjustStock() {
+            const id = document.getElementById('adjust-id').value.trim();
+            const quantity = parseInt(document.getElementById('adjust-quantity').value);
+
+            if (!id || isNaN(quantity)) {
+                showResult('Por favor ingrese el ID del item y la cantidad a ajustar.', 'error');
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items/${id}/adjust`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        quantity: quantity
+                    })
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return adjustStock(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                const data = await response.json();
+
+                if (response.status === 202 || response.status === 200) {
+                    showResult(`✅ Stock ajustado exitosamente.`, 'success');
+                    addLog(`✅ Stock ajustado para item ${id}: ${quantity > 0 ? '+' : ''}${quantity}`);
+                    
+                    // Limpiar formulario
+                    document.getElementById('adjust-id').value = '';
+                    document.getElementById('adjust-quantity').value = '';
+                    
+                    // Refrescar inventario
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                    addLog(`❌ Error al ajustar stock: ${data.error || data.message}`);
+                }
+            } catch (error) {
+                console.error("Error al ajustar stock:", error);
+                showResult('❌ Error de conexión con Command Service.', 'error');
+                addLog(`❌ Error de conexión al ajustar stock: ${error.message}`);
+            }
+        }
+
+        async function reserveStock() {
+            const id = document.getElementById('reserve-id').value.trim();
+            const quantity = parseInt(document.getElementById('reserve-quantity').value);
+
+            if (!id || isNaN(quantity) || quantity <= 0) {
+                showResult('Por favor ingrese el ID del item y una cantidad válida a reservar.', 'error');
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items/${id}/reserve`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        quantity: quantity
+                    })
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return reserveStock(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                const data = await response.json();
+
+                if (response.status === 202 || response.status === 200) {
+                    showResult(`✅ Stock reservado exitosamente.`, 'success');
+                    addLog(`✅ Stock reservado para item ${id}: ${quantity} unidades`);
+                    
+                    // Limpiar formulario
+                    document.getElementById('reserve-quantity').value = '';
+                    
+                    // Refrescar inventario
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                    addLog(`❌ Error al reservar stock: ${data.error || data.message}`);
+                }
+            } catch (error) {
+                console.error("Error al reservar stock:", error);
+                showResult('❌ Error de conexión con Command Service.', 'error');
+                addLog(`❌ Error de conexión al reservar stock: ${error.message}`);
+            }
+        }
+
+        async function releaseStock() {
+            const id = document.getElementById('reserve-id').value.trim();
+            const quantity = parseInt(document.getElementById('release-quantity').value);
+
+            if (!id || isNaN(quantity) || quantity <= 0) {
+                showResult('Por favor ingrese el ID del item y una cantidad válida a liberar.', 'error');
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items/${id}/release`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        quantity: quantity
+                    })
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return releaseStock(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                const data = await response.json();
+
+                if (response.status === 202 || response.status === 200) {
+                    showResult(`✅ Stock liberado exitosamente.`, 'success');
+                    addLog(`✅ Stock liberado para item ${id}: ${quantity} unidades`);
+                    
+                    // Limpiar formulario
+                    document.getElementById('release-quantity').value = '';
+                    
+                    // Refrescar inventario
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                    addLog(`❌ Error al liberar stock: ${data.error || data.message}`);
+                }
+            } catch (error) {
+                console.error("Error al liberar stock:", error);
+                showResult('❌ Error de conexión con Command Service.', 'error');
+                addLog(`❌ Error de conexión al liberar stock: ${error.message}`);
+            }
+        }
+
+        // --- Modal de Edición ---
+
+        function openEditModal(item) {
+            document.getElementById('edit-id').value = item.id || item.ID || '';
+            document.getElementById('edit-sku').value = item.sku || item.SKU || '';
+            document.getElementById('edit-name').value = item.name || item.Name || '';
+            document.getElementById('edit-description').value = item.description || item.Description || '';
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function saveEditItem() {
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('edit-name').value.trim();
+            const description = document.getElementById('edit-description').value.trim();
+
+            if (!name) {
+                showResult('El nombre es requerido.', 'error');
+                return;
+            }
+
+            try {
+                await ensureAuthenticated();
+                const response = await fetch(`${COMMAND_API}/api/v1/inventory/items/${id}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        name: name,
+                        description: description || ''
+                    })
+                });
+
+                if (response.status === 401) {
+                    addLog('🔄 Token expirado. Re-autenticando...');
+                    if (await login()) {
+                        return saveEditItem(); // Reintentar con nuevo token
+                    }
+                    throw new Error('No autorizado');
+                }
+
+                const data = await response.json();
+
+                if (response.status === 200 || response.status === 202) {
+                    showResult(`✅ Item actualizado exitosamente.`, 'success');
+                    addLog(`✅ Item actualizado desde modal: ${id}`);
+                    closeEditModal();
+                    setTimeout(fetchInventory, 2000);
+                } else {
+                    showResult(`❌ Error ${response.status}: ${data.error || data.message || 'Error desconocido'}`, 'error');
+                }
+            } catch (error) {
+                console.error("Error al actualizar item:", error);
+                showResult('❌ Error de conexión con Command Service.', 'error');
+            }
+        }
+
+        // Cerrar modal al hacer clic fuera de él
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target == modal) {
+                closeEditModal();
+            }
+        }
+        
+        // --- Inicialización ---
+        window.onload = async () => {
+            addLog('[Sistema] Inicializando dashboard...');
+            addLog('[Sistema] Autenticando con Command Service...');
+            
+            // Autenticar primero
+            await login();
+            
+            addLog('[Sistema] Verificando estado de servicios...');
+            checkServiceStatus();
+            
+            // Cargar inventario después de autenticar
+            if (authToken) {
+                fetchInventory();
+            }
+            
+            // Verificar estado de servicios cada 30 segundos
+            setInterval(checkServiceStatus, 30000);
+            
+            // Refrescar inventario cada 10 segundos
+            setInterval(() => {
+                if (authToken) {
+                    fetchInventory();
+                }
+            }, 10000);
+        };
+    </script>
+</body>
+</html>

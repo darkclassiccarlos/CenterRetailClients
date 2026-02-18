@@ -1,0 +1,637 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>handlers: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">command-service/internal/handlers/inventory_handler.go (53.7%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package handlers
+
+import (
+        "net/http"
+
+        "command-service/internal/commands"
+        "command-service/internal/config"
+        "command-service/internal/domain"
+        "command-service/internal/events"
+        "command-service/internal/repository"
+
+        "github.com/gin-gonic/gin"
+        "github.com/google/uuid"
+        "go.uber.org/zap"
+)
+
+type InventoryHandler struct {
+        logger     *zap.Logger
+        repository repository.InventoryRepository
+        eventBus   events.EventPublisher
+}
+
+func NewInventoryHandler(logger *zap.Logger, cfg *config.Config) *InventoryHandler <span class="cov0" title="0">{
+        // TODO: Initialize repository with actual implementations
+        repo := repository.NewInventoryRepository() // Placeholder
+
+        // Initialize Kafka event publisher
+        eventBus, err := events.NewKafkaEventPublisher(cfg, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Warn("Failed to initialize Kafka publisher, using in-memory fallback", zap.Error(err))
+                eventBus = events.NewEventPublisher() // Fallback to in-memory
+        }</span>
+
+        <span class="cov0" title="0">return &amp;InventoryHandler{
+                logger:     logger,
+                repository: repo,
+                eventBus:   eventBus,
+        }</span>
+}
+
+// CreateItem handles POST /api/v1/inventory/items
+// @Summary      Create a new inventory item
+// @Description  Crea un nuevo item en el inventario. El SKU debe ser único y la cantidad inicial debe ser &gt;= 0.
+//
+// **Ejemplos válidos:**
+// - Request completo con todos los campos
+// - Request con descripción opcional vacía
+// - Request con cantidad inicial 0
+//
+// **Ejemplos inválidos:**
+// - Campos requeridos faltantes (sku, name, quantity)
+// - Cantidad negativa
+// - SKU vacío
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Param        request  body      CreateItemRequest  true  "Item creation request"
+// @Success      201      {object}  CreateItemResponse  "Item creado exitosamente"
+// @Failure      400      {object}  ErrorResponse       "Request inválido - campos requeridos faltantes o valores inválidos"
+// @Failure      409      {object}  ErrorResponse       "Conflicto - SKU duplicado"
+// @Failure      500      {object}  ErrorResponse       "Error interno del servidor - error de persistencia o conexión a base de datos"
+// @Failure      503      {object}  ErrorResponse       "Servicio no disponible - error de conexión al event broker"
+// @Router       /inventory/items [post]
+func (h *InventoryHandler) CreateItem(c *gin.Context) <span class="cov10" title="4">{
+        var req struct {
+                SKU         string `json:"sku" binding:"required"`
+                Name        string `json:"name" binding:"required"`
+                Description string `json:"description"`
+                Quantity    int    `json:"quantity" binding:"required,min=0"`
+        }
+
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov5" title="2">{
+                h.logger.Warn("Invalid request", zap.Error(err))
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Create command
+        <span class="cov5" title="2">cmd := commands.CreateItemCommand{
+                SKU:         req.SKU,
+                Name:        req.Name,
+                Description: req.Description,
+                Quantity:    req.Quantity,
+        }
+
+        // Execute command
+        item := domain.NewInventoryItem(cmd.SKU, cmd.Name, cmd.Description, cmd.Quantity)
+
+        // Save to repository
+        if err := h.repository.Save(c.Request.Context(), item); err != nil </span><span class="cov1" title="1">{
+                h.logger.Error("Failed to save item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create item"})
+                return
+        }</span>
+
+        // Publish event
+        <span class="cov1" title="1">event := events.InventoryItemCreatedEvent{
+                ItemID:      item.ID,
+                SKU:         item.SKU,
+                Name:        item.Name,
+                Description: item.Description,
+                Quantity:    item.Quantity,
+                OccurredAt:  item.CreatedAt,
+        }
+        if err := h.eventBus.Publish(c.Request.Context(), event); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to publish event", zap.Error(err))
+                // Note: In production, you might want to handle this differently
+        }</span>
+
+        <span class="cov1" title="1">h.logger.Info("Item created", zap.String("item_id", item.ID.String()))
+        c.JSON(http.StatusCreated, gin.H{
+                "id":          item.ID,
+                "sku":         item.SKU,
+                "name":        item.Name,
+                "description": item.Description,
+                "quantity":    item.Quantity,
+                "created_at":  item.CreatedAt,
+        })</span>
+}
+
+// UpdateItem handles PUT /api/v1/inventory/items/:id
+// @Summary      Update an inventory item
+// @Description  Actualiza un item existente en el inventario. Solo se pueden actualizar el nombre y la descripción.
+//
+// **Ejemplos válidos:**
+// - Actualizar nombre y descripción
+// - Actualizar solo el nombre (descripción opcional)
+//
+// **Ejemplos inválidos:**
+// - Nombre faltante (campo requerido)
+// - ID inválido (UUID malformado)
+// - Item no encontrado (ID válido pero no existe)
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string             true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Param        request  body      UpdateItemRequest  true  "Item update request"
+// @Success      200      {object}  UpdateItemResponse  "Item actualizado exitosamente"
+// @Failure      400      {object}  ErrorResponse      "Request inválido - ID inválido o campos requeridos faltantes"
+// @Failure      404      {object}  ErrorResponse      "Item no encontrado"
+// @Failure      500      {object}  ErrorResponse      "Error interno del servidor - error de persistencia o conexión a base de datos"
+// @Failure      503      {object}  ErrorResponse      "Servicio no disponible - error de conexión al event broker"
+// @Router       /inventory/items/{id} [put]
+func (h *InventoryHandler) UpdateItem(c *gin.Context) <span class="cov5" title="2">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        <span class="cov5" title="2">var req struct {
+                Name        string `json:"name" binding:"required"`
+                Description string `json:"description"`
+        }
+
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Get item from repository
+        <span class="cov5" title="2">item, err := h.repository.FindByID(c.Request.Context(), id)
+        if err != nil </span><span class="cov1" title="1">{
+                if err == domain.ErrItemNotFound </span><span class="cov1" title="1">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update item"})
+                return</span>
+        }
+
+        // Update item
+        <span class="cov1" title="1">item.Name = req.Name
+        item.Description = req.Description
+
+        // Save changes
+        if err := h.repository.Save(c.Request.Context(), item); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to save item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update item"})
+                return
+        }</span>
+
+        // Publish event
+        <span class="cov1" title="1">event := events.InventoryItemUpdatedEvent{
+                ItemID:      item.ID,
+                Name:        item.Name,
+                Description: item.Description,
+                OccurredAt:  item.UpdatedAt,
+        }
+        if err := h.eventBus.Publish(c.Request.Context(), event); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to publish event", zap.Error(err))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, gin.H{
+                "id":          item.ID,
+                "sku":         item.SKU,
+                "name":        item.Name,
+                "description": item.Description,
+                "quantity":    item.Quantity,
+                "updated_at":  item.UpdatedAt,
+        })</span>
+}
+
+// DeleteItem handles DELETE /api/v1/inventory/items/:id
+// @Summary      Delete an inventory item
+// @Description  Elimina un item del inventario. Esta operación no se puede deshacer.
+//
+// **Ejemplos válidos:**
+// - DELETE con ID válido existente
+//
+// **Ejemplos inválidos:**
+// - ID inválido (UUID malformado)
+// - Item no encontrado (ID válido pero no existe)
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Success      200  {object}  SuccessResponse  "Item eliminado exitosamente"
+// @Failure      400  {object}  ErrorResponse    "ID inválido"
+// @Failure      404  {object}  ErrorResponse    "Item no encontrado"
+// @Failure      500  {object}  ErrorResponse    "Error interno del servidor - error de persistencia o conexión a base de datos"
+// @Failure      503  {object}  ErrorResponse    "Servicio no disponible - error de conexión al event broker"
+// @Router       /inventory/items/{id} [delete]
+func (h *InventoryHandler) DeleteItem(c *gin.Context) <span class="cov5" title="2">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        // Get item to verify it exists
+        <span class="cov5" title="2">item, err := h.repository.FindByID(c.Request.Context(), id)
+        if err != nil </span><span class="cov1" title="1">{
+                if err == domain.ErrItemNotFound </span><span class="cov1" title="1">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete item"})
+                return</span>
+        }
+
+        // Delete from repository
+        <span class="cov1" title="1">if err := h.repository.Delete(c.Request.Context(), id); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to delete item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete item"})
+                return
+        }</span>
+
+        // Publish event
+        <span class="cov1" title="1">event := events.InventoryItemDeletedEvent{
+                ItemID:     item.ID,
+                SKU:        item.SKU,
+                OccurredAt: item.UpdatedAt,
+        }
+        if err := h.eventBus.Publish(c.Request.Context(), event); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to publish event", zap.Error(err))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, gin.H{"message": "item deleted successfully"})</span>
+}
+
+// AdjustStock handles POST /api/v1/inventory/items/:id/adjust
+// @Summary      Adjust stock quantity
+// @Description  Ajusta la cantidad de stock de un item. Valores positivos aumentan el stock, valores negativos lo disminuyen. No se puede ajustar a un valor negativo total.
+//
+// **Ejemplos válidos:**
+// - Aumentar stock: `{"quantity": 10}`
+// - Disminuir stock: `{"quantity": -5}` (siempre que el resultado sea &gt;= 0)
+//
+// **Ejemplos inválidos:**
+// - Cantidad faltante
+// - Ajuste que resultaría en stock negativo
+// - ID inválido o item no encontrado
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string              true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Param        request  body      AdjustStockRequest  true  "Stock adjustment request"
+// @Success      200      {object}  StockResponse       "Stock ajustado exitosamente"
+// @Failure      400      {object}  ErrorResponse       "Request inválido - ID inválido, cantidad faltante o stock insuficiente"
+// @Failure      404      {object}  ErrorResponse       "Item no encontrado"
+// @Failure      500      {object}  ErrorResponse       "Error interno del servidor - error de persistencia o conexión a base de datos"
+// @Failure      503      {object}  ErrorResponse       "Servicio no disponible - error de conexión al event broker"
+// @Router       /inventory/items/{id}/adjust [post]
+func (h *InventoryHandler) AdjustStock(c *gin.Context) <span class="cov5" title="2">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        <span class="cov5" title="2">var req struct {
+                Quantity int `json:"quantity" binding:"required"`
+        }
+
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Get item from repository
+        <span class="cov5" title="2">item, err := h.repository.FindByID(c.Request.Context(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == domain.ErrItemNotFound </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to adjust stock"})
+                return</span>
+        }
+
+        // Adjust stock
+        <span class="cov5" title="2">if err := item.AdjustStock(req.Quantity); err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Save changes
+        <span class="cov1" title="1">if err := h.repository.Save(c.Request.Context(), item); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to save item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to adjust stock"})
+                return
+        }</span>
+
+        // Publish event
+        <span class="cov1" title="1">event := events.StockAdjustedEvent{
+                ItemID:     item.ID,
+                SKU:        item.SKU,
+                Quantity:   req.Quantity,
+                NewTotal:   item.Quantity,
+                OccurredAt: item.UpdatedAt,
+        }
+        if err := h.eventBus.Publish(c.Request.Context(), event); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to publish event", zap.Error(err))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, gin.H{
+                "id":         item.ID,
+                "quantity":   item.Quantity,
+                "available":  item.AvailableQuantity(),
+                "reserved":   item.Reserved,
+                "updated_at": item.UpdatedAt,
+        })</span>
+}
+
+// ReserveStock handles POST /api/v1/inventory/items/:id/reserve
+// @Summary      Reserve stock
+// @Description  Reserva una cantidad de stock de un item. La cantidad reservada no puede exceder el stock disponible.
+//
+// **Ejemplos válidos:**
+// - Reservar cantidad disponible: `{"quantity": 5}`
+//
+// **Ejemplos inválidos:**
+// - Cantidad faltante
+// - Cantidad menor a 1
+// - Stock insuficiente (cantidad &gt; disponible)
+// - ID inválido o item no encontrado
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string               true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Param        request  body      ReserveStockRequest  true  "Stock reservation request"
+// @Success      200      {object}  StockResponse       "Stock reservado exitosamente"
+// @Failure      400      {object}  ErrorResponse       "Request inválido - ID inválido, cantidad inválida o stock insuficiente"
+// @Failure      404      {object}  ErrorResponse       "Item no encontrado"
+// @Failure      500      {object}  ErrorResponse       "Error interno del servidor - error de persistencia o conexión a base de datos"
+// @Failure      503      {object}  ErrorResponse       "Servicio no disponible - error de conexión al event broker"
+// @Router       /inventory/items/{id}/reserve [post]
+func (h *InventoryHandler) ReserveStock(c *gin.Context) <span class="cov5" title="2">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        <span class="cov5" title="2">var req struct {
+                Quantity int `json:"quantity" binding:"required,min=1"`
+        }
+
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Get item from repository
+        <span class="cov5" title="2">item, err := h.repository.FindByID(c.Request.Context(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == domain.ErrItemNotFound </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reserve stock"})
+                return</span>
+        }
+
+        // Reserve stock
+        <span class="cov5" title="2">if err := item.ReserveStock(req.Quantity); err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Save changes
+        <span class="cov1" title="1">if err := h.repository.Save(c.Request.Context(), item); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to save item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reserve stock"})
+                return
+        }</span>
+
+        // Publish event
+        <span class="cov1" title="1">event := events.StockReservedEvent{
+                ItemID:     item.ID,
+                SKU:        item.SKU,
+                Quantity:   req.Quantity,
+                Reserved:   item.Reserved,
+                Available:  item.AvailableQuantity(),
+                OccurredAt: item.UpdatedAt,
+        }
+        if err := h.eventBus.Publish(c.Request.Context(), event); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to publish event", zap.Error(err))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, gin.H{
+                "id":         item.ID,
+                "quantity":   item.Quantity,
+                "available":  item.AvailableQuantity(),
+                "reserved":   item.Reserved,
+                "updated_at": item.UpdatedAt,
+        })</span>
+}
+
+// ReleaseStock handles POST /api/v1/inventory/items/:id/release
+// @Summary      Release reserved stock
+// @Description  Libera stock previamente reservado de un item. La cantidad a liberar no puede exceder la cantidad reservada.
+//
+// **Ejemplos válidos:**
+// - Liberar cantidad reservada: `{"quantity": 5}`
+//
+// **Ejemplos inválidos:**
+// - Cantidad faltante
+// - Cantidad menor a 1
+// - Cantidad excede lo reservado
+// - ID inválido o item no encontrado
+//
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string               true  "Item ID (UUID)" example(550e8400-e29b-41d4-a716-446655440000)
+// @Param        request  body      ReleaseStockRequest  true  "Stock release request"
+// @Success      200      {object}  StockResponse       "Stock liberado exitosamente"
+// @Failure      400      {object}  ErrorResponse       "Request inválido - ID inválido, cantidad inválida o cantidad a liberar excede lo reservado"
+// @Failure      404      {object}  ErrorResponse       "Item no encontrado"
+// @Failure      500      {object}  ErrorResponse       "Error interno del servidor - error de persistencia o conexión a base de datos"
+// @Failure      503      {object}  ErrorResponse       "Servicio no disponible - error de conexión al event broker"
+// @Router       /inventory/items/{id}/release [post]
+func (h *InventoryHandler) ReleaseStock(c *gin.Context) <span class="cov5" title="2">{
+        id, err := uuid.Parse(c.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+                return
+        }</span>
+
+        <span class="cov5" title="2">var req struct {
+                Quantity int `json:"quantity" binding:"required,min=1"`
+        }
+
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Get item from repository
+        <span class="cov5" title="2">item, err := h.repository.FindByID(c.Request.Context(), id)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == domain.ErrItemNotFound </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusNotFound, gin.H{"error": "item not found"})
+                        return
+                }</span>
+                <span class="cov0" title="0">h.logger.Error("Failed to find item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to release stock"})
+                return</span>
+        }
+
+        // Release stock
+        <span class="cov5" title="2">if err := item.ReleaseStock(req.Quantity); err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }</span>
+
+        // Save changes
+        <span class="cov1" title="1">if err := h.repository.Save(c.Request.Context(), item); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to save item", zap.Error(err))
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to release stock"})
+                return
+        }</span>
+
+        // Publish event
+        <span class="cov1" title="1">event := events.StockReleasedEvent{
+                ItemID:     item.ID,
+                SKU:        item.SKU,
+                Quantity:   req.Quantity,
+                Reserved:   item.Reserved,
+                Available:  item.AvailableQuantity(),
+                OccurredAt: item.UpdatedAt,
+        }
+        if err := h.eventBus.Publish(c.Request.Context(), event); err != nil </span><span class="cov0" title="0">{
+                h.logger.Error("Failed to publish event", zap.Error(err))
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusOK, gin.H{
+                "id":         item.ID,
+                "quantity":   item.Quantity,
+                "available":  item.AvailableQuantity(),
+                "reserved":   item.Reserved,
+                "updated_at": item.UpdatedAt,
+        })</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

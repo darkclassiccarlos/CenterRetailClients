@@ -1,0 +1,45 @@
+=== RUN   TestKafkaEventPublisher_Publish_InventoryItemCreatedEvent
+--- PASS: TestKafkaEventPublisher_Publish_InventoryItemCreatedEvent (0.00s)
+=== RUN   TestKafkaEventPublisher_Publish_StockAdjustedEvent
+--- PASS: TestKafkaEventPublisher_Publish_StockAdjustedEvent (0.00s)
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/InventoryItemCreated
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/InventoryItemUpdated
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/InventoryItemDeleted
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/StockAdjusted
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/StockReserved
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/StockReleased
+=== RUN   TestKafkaEventPublisher_GetEventType_AllTypes/Unknown
+--- PASS: TestKafkaEventPublisher_GetEventType_AllTypes (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/InventoryItemCreated (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/InventoryItemUpdated (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/InventoryItemDeleted (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/StockAdjusted (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/StockReserved (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/StockReleased (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetEventType_AllTypes/Unknown (0.00s)
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/InventoryItemCreated
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/InventoryItemUpdated
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/InventoryItemDeleted
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/StockAdjusted
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/StockReserved
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/StockReleased
+=== RUN   TestKafkaEventPublisher_GetTopicForEvent_AllTypes/Unknown
+--- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/InventoryItemCreated (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/InventoryItemUpdated (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/InventoryItemDeleted (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/StockAdjusted (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/StockReserved (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/StockReleased (0.00s)
+    --- PASS: TestKafkaEventPublisher_GetTopicForEvent_AllTypes/Unknown (0.00s)
+=== RUN   TestKafkaEventPublisher_GetPartitionKey_UUID
+--- PASS: TestKafkaEventPublisher_GetPartitionKey_UUID (0.00s)
+=== RUN   TestKafkaEventPublisher_GetPartitionKey_String
+--- PASS: TestKafkaEventPublisher_GetPartitionKey_String (0.00s)
+=== RUN   TestInMemoryEventPublisher_Publish
+--- PASS: TestInMemoryEventPublisher_Publish (0.00s)
+PASS
+	command-service/internal/events	coverage: 28.0% of statements
+ok  	command-service/internal/events	0.231s	coverage: 28.0% of statements
